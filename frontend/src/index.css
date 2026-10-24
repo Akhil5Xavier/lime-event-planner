@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-gray-50 text-gray-900 antialiased;
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-1 rounded-md px-3 py-1.5 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-50;
+  }
+  .btn-primary {
+    @apply btn bg-brand text-white hover:bg-brand-dark;
+  }
+  .btn-secondary {
+    @apply btn border border-gray-300 bg-white text-gray-700 hover:bg-gray-50;
+  }
+  .btn-danger {
+    @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50;
+  }
+  .input {
+    @apply w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand;
+  }
+  .label {
+    @apply mb-1 block text-xs font-medium uppercase tracking-wide text-gray-500;
+  }
+  .card {
+    @apply rounded-lg border border-gray-200 bg-white shadow-sm;
+  }
+}
+
+/* FullCalendar tweaks */
+/* FullCalendar's yellow "today" fill looks like the amber demand colour; mark today with a green day number instead. */
+.fc {
+  --fc-today-bg-color: transparent;
+}
+.fc .fc-day-today .fc-daygrid-day-number {
+  border-radius: 9999px;
+  background: #00c300;
+  color: #fff;
+  font-weight: 600;
+  padding: 0 6px;
+  margin: 2px 0;
+}
+.fc .fc-daygrid-day.demand-high {
+  background: #fee2e2;
+}
+.fc .fc-daygrid-day.demand-medium {
+  background: #fef3c7;
+}
+.fc .fc-daygrid-day.demand-low {
+  background: #f0fdf4;
+}
+.fc .fc-daygrid-day {
+  cursor: pointer;
+}
+.fc .fc-daygrid-day:hover {
+  outline: 2px solid #00c300;
+  outline-offset: -2px;
+}
+.fc .fc-daygrid-day-top {
+  flex-direction: row;
+}
+.fc-event {
+  cursor: pointer;
+}

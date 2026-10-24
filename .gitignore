@@ -1,0 +1,10 @@
+.env
+*.db
+__pycache__/
+.pytest_cache/
+.venv/
+node_modules/
+dist/
+backups/
+# Local Claude/editor tooling with machine-specific paths.
+.claude/

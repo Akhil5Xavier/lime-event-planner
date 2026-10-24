@@ -1,0 +1,108 @@
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "5"
+
+x-backend-env: &backend-env
+  ENVIRONMENT: production
+  LOG_FORMAT: json
+  DATABASE_URL: postgresql+psycopg://lime:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@db:5432/lime
+
+services:
+  db:
+    image: postgres:16.15-alpine
+    environment:
+      POSTGRES_USER: lime
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: lime
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lime -d lime"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  # API. Runs migrations on start, then serves with several workers.
+  backend:
+    build: ./backend
+    env_file: .env
+    environment:
+      <<: *backend-env
+      SCHEDULER_ENABLED: "false"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+  # Nightly sync + cleanup. Exactly one of these must run.
+  worker:
+    build: ./backend
+    command: ["python", "-m", "app.cli", "scheduler"]
+    env_file: .env
+    environment:
+      <<: *backend-env
+      SCHEDULER_ENABLED: "false"
+    depends_on:
+      backend:
+        condition: service_healthy  # migrations have run
+    healthcheck:
+      disable: true
+    restart: unless-stopped
+    logging: *logging
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_SENTRY_DSN: ${VITE_SENTRY_DSN:-}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+  # HTTPS entry point; the only service with published ports.
+  caddy:
+    image: caddy:2.11.7-alpine
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      frontend:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+  # Daily database dump into ./backups (kept BACKUP_KEEP_DAYS days). Copy them off this machine too.
+  backup:
+    image: postgres:16.15-alpine
+    entrypoint: ["/bin/sh", "/ops/backup-loop.sh"]
+    environment:
+      PGUSER: lime
+      PGDATABASE: lime
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - ./ops:/ops:ro
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

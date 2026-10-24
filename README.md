@@ -1,0 +1,159 @@
+# Lime Event Planner · Stuttgart
+
+Internal tool for the Lime Stuttgart mobility center. It collects upcoming events in and around Stuttgart, shows them on a calendar, and recommends where and when to put extra e-scooters.
+
+- **Calendar**: month or week view. Each day is coloured by expected demand and shows `events · +extra scooters`.
+- **Day view**: event list with a scooter recommendation per event, a deployment plan per hotspot, and a map of the day's venues.
+- **Manual events** for things the APIs miss (Volksfest, Weindorf, Christmas market), plus **visitor overrides** on any event.
+- **Venues**: managers can correct capacity and add parking notes for the field team.
+- **Admin**: data-source status, sync history, "Sync now", user management.
+
+## Architecture
+
+```
+Ticketmaster API ─┐
+PredictHQ (opt.) ─┼─► nightly ingestion (APScheduler) ─► PostgreSQL ◄─ FastAPI (JWT) ◄─ React SPA (nginx)
+Manual entries ───┘
+```
+
+| Part     | Stack |
+|----------|-------|
+| backend  | Python 3.12, FastAPI, SQLAlchemy 2, Alembic, APScheduler, httpx |
+| frontend | React 18, TypeScript, Vite, TanStack Query, FullCalendar, Leaflet/OpenStreetMap, Tailwind |
+| deploy   | Docker Compose: `caddy` (HTTPS), `frontend` (nginx), `backend` (API), `worker` (nightly sync), `db` (Postgres 16), `backup` |
+
+## Production deployment
+
+### What the stack does
+
+| Service    | Role |
+|------------|------|
+| `caddy`    | The only service exposed to the network (ports 80/443). Gets and renews a Let's Encrypt certificate for `DOMAIN` automatically and sends an HSTS header. |
+| `frontend` | nginx serving the React app. Adds security headers (CSP, X-Frame-Options, …), limits logins to 5 per minute per IP, and proxies `/api` to the backend. |
+| `backend`  | FastAPI with `WEB_CONCURRENCY` workers (default 2), running as a non-root user. Applies database migrations on start. Refuses to start if `JWT_SECRET` is weak or the database is SQLite. |
+| `worker`   | Runs the nightly sync (`INGEST_CRON`, default 03:00 Stuttgart time) and deletes events older than `EVENT_RETENTION_DAYS`. Exactly one should run. |
+| `db`       | PostgreSQL 16; data in the `pgdata` volume. |
+| `backup`   | A compressed `pg_dump` into `./backups` at start-up and then every 24 h, keeping `BACKUP_KEEP_DAYS` (14). |
+
+All logs are JSON, one object per line, and rotated at 10 MB × 5 files per service. Image versions and Python packages (`backend/requirements.lock`) are pinned, so a rebuild gives the same result.
+
+### First deployment
+
+1. **Server**: a Linux VM (2 vCPU, 4 GB RAM, 40 GB disk) with Docker and the Compose plugin. Open only ports 80 and 443. If possible, keep it reachable only through the company VPN or SSO proxy.
+2. **DNS**: point your host name (e.g. `events.stuttgart.example.com`) at the server.
+3. **Code**: `git clone` the repository onto the server.
+4. **Config**:
+   ```bash
+   cp .env.example .env
+   ```
+   Set `DOMAIN`, `JWT_SECRET` (`python3 -c "import secrets; print(secrets.token_urlsafe(48))"`), `POSTGRES_PASSWORD`, `TICKETMASTER_API_KEY` and `ALERT_WEBHOOK_URL`. Store a copy of these values in your password manager.
+5. **Start**:
+   ```bash
+   docker compose up -d --build --wait
+   ```
+6. **First admin** (prompts for a password):
+   ```bash
+   docker compose exec backend python -m app.cli create-user you@li.me --role admin
+   ```
+7. Open `https://<DOMAIN>`, go to **Admin**, click **Sync now**, and add the manager accounts.
+
+### Monitoring
+
+- **Uptime**: point a monitor (UptimeRobot, Better Stack, …) at
+  - `https://<DOMAIN>/api/health`: API and database are up;
+  - `https://<DOMAIN>/api/health/ingest`: returns 503 if no data source is configured or the last successful sync is older than `INGEST_MAX_AGE_HOURS` (36).
+- **Sync alerts**: with `ALERT_WEBHOOK_URL` set (a Slack incoming webhook, or anything that accepts `{"text": "..."}`), every failed sync and every sync that finds 0 events posts a message.
+- **Errors**: set `SENTRY_DSN` (backend) and `VITE_SENTRY_DSN` (browser, needs a rebuild) to report errors to Sentry. Both are off when empty.
+- **Logs**: `docker compose logs -f backend worker`.
+
+### Backups and restore
+
+Backups land in `./backups/lime-YYYYMMDD-HHMMSS.sql.gz` on the server. **Copy them off the machine too**, for example with a nightly `aws s3 sync ./backups s3://<bucket>/lime-events/`.
+
+Take a backup now:
+```bash
+docker compose exec backup /ops/backup.sh
+```
+
+Restore (the dump drops and recreates the tables). Stop the app first, restore, then start it again:
+```bash
+docker compose stop backend worker
+gunzip -c backups/lime-YYYYMMDD-HHMMSS.sql.gz | docker compose exec -T db psql -U lime -d lime
+docker compose start backend worker
+```
+Test a restore at least once a quarter, on a copy of the stack.
+
+### Updating
+
+```bash
+git pull
+docker compose up -d --build --wait
+```
+Migrations run automatically when the backend starts. To change Python dependencies, edit `backend/requirements.txt` and regenerate `requirements.lock` (instructions at the top of that file).
+
+### Testing the full stack locally
+
+Install Docker Desktop, set `DOMAIN=localhost` in `.env`, run `docker compose up -d --build --wait`, and open <https://localhost>. Caddy uses its own local certificate, so the browser will warn once.
+
+## Continuous integration
+
+`.github/workflows/ci.yml` runs on every push:
+- backend tests, and migrations applied to an empty database;
+- frontend typecheck and build;
+- a full `docker compose` stack started and smoke-tested over HTTPS.
+
+## Local development
+
+Backend on SQLite:
+
+```bash
+cd backend
+python -m venv .venv
+.venv\Scripts\activate            # Windows; on macOS/Linux: source .venv/bin/activate
+pip install -r requirements-dev.txt
+copy ..\.env.example .env         # then set TICKETMASTER_API_KEY; DATABASE_URL defaults to SQLite
+python -m app.cli init-db
+python -m app.cli create-user you@li.me --role admin
+uvicorn app.main:app --reload --port 8000
+```
+
+API docs are at <http://localhost:8000/docs>. Run the tests with `pytest`.
+
+Frontend (needs Node 24 LTS). Vite proxies `/api` to port 8000:
+
+```bash
+cd frontend
+npm install
+npm run dev                        # http://localhost:5173
+```
+
+Other CLI commands: `python -m app.cli ingest` runs a sync immediately. For a non-interactive `create-user`, set `LIME_USER_PASSWORD`.
+
+## How the recommendation works
+
+The model is kept simple on purpose, so managers can check it and override it:
+
+1. **Visitors** come from the first available of: the manager's override, the data source's prediction (PredictHQ), venue capacity × a category fill factor (sport 0.9, concert 0.8, theatre 0.75, festival 0.6, …), or a category default. For multi-day events, the predicted total is spread over the days.
+2. **Extra scooters** = `ceil(visitors × SCOOTER_SHARE)`, default 0.5 %, capped at `MAX_SCOOTERS_PER_SPOT` (150).
+3. **Time windows**: arrivals from 90 minutes before the start; departures from the end until 60 minutes after it. If the end time is unknown, 3 hours after the start is assumed. Middle days of multi-day events use 11:00–23:00.
+4. **Hotspots**: venues within `HOTSPOT_RADIUS_M` (600 m) of each other form one hotspot. For example, MHPArena, Porsche-Arena and Schleyerhalle are all in NeckarPark. A hotspot's need is the peak of events that overlap in time, not the plain sum, because scooters from an afternoon match can serve an evening concert.
+5. **Priority**: high at 10,000+ visitors, medium at 2,000+, otherwise low.
+
+Tune the numbers with the env vars in `.env.example`, or change `backend/app/services/deployment.py`.
+
+## Data sources
+
+- **Ticketmaster Discovery API** (primary, free: 5,000 calls/day). The connector queries a 25 km radius around Stuttgart city centre for the next 90 days, in 14-day windows, to stay under the API's 1,000-result paging limit.
+- **PredictHQ** (optional, paid). Turns on automatically when `PREDICTHQ_TOKEN` is set. It adds attendance predictions. Events that both sources report are linked as duplicates (same venue, start within 1 hour, similar title), and only one copy is shown.
+- Eventbrite is not used because its public event search API has been retired.
+- To add a source, implement `Connector` in `backend/app/ingest/` (`fetch(start, end) -> list[NormalizedEvent]`) and register it in `runner.all_connectors()`.
+
+API venues are matched to the 12 seeded Stuttgart venues by name or alias, or by distance (within 150 m). Unknown venues are created automatically. The seeded coordinates and capacities are approximate; correct them on the **Venues** page.
+
+## Operations notes
+
+- In development the scheduler runs inside the API (`SCHEDULER_ENABLED=true`, a single process). In Docker it runs in the `worker` service, and the API can use several workers. Overlapping syncs are blocked across processes through the `ingest_runs` table. A "running" row older than 2 hours is treated as left over from a crash.
+- API keys are removed from sync error messages before they are stored or sent as alerts.
+- Imported events are overwritten on every sync, so they can't be edited. Only the visitor override (stored separately) survives. Manual events can be fully edited and deleted.
+- Every manual event records who added it, and every edit or visitor override records who made it and when. This is shown on the event card.
+- Login tokens last 8 hours (`JWT_EXPIRE_MINUTES`). Changing `JWT_SECRET` signs everyone out.

@@ -1,0 +1,68 @@
+{
+  "_embedded": {
+    "events": [
+      {
+        "name": "VfB Stuttgart - FC Bayern München",
+        "type": "event",
+        "id": "Z698xZb_Z17kv4a",
+        "url": "https://www.ticketmaster.de/event/vfb-stuttgart-fc-bayern",
+        "images": [
+          {"ratio": "4_3", "url": "https://img.example/vfb_4_3.jpg", "width": 305, "height": 225},
+          {"ratio": "16_9", "url": "https://img.example/vfb_16_9_small.jpg", "width": 640, "height": 360},
+          {"ratio": "16_9", "url": "https://img.example/vfb_16_9_large.jpg", "width": 2048, "height": 1152}
+        ],
+        "dates": {
+          "start": {"localDate": "2026-11-07", "localTime": "15:30:00", "dateTime": "2026-11-07T14:30:00Z"},
+          "timezone": "Europe/Berlin",
+          "status": {"code": "onsale"}
+        },
+        "classifications": [
+          {"primary": true, "segment": {"id": "KZFzniwnSyZfZ7v7nE", "name": "Sports"},
+           "genre": {"id": "KnvZfZ7vAvE", "name": "Soccer"}}
+        ],
+        "_embedded": {
+          "venues": [
+            {
+              "name": "MHPArena Stuttgart",
+              "id": "Z598xZb_ZeAke",
+              "postalCode": "70372",
+              "city": {"name": "Stuttgart"},
+              "address": {"line1": "Mercedesstraße 87"},
+              "location": {"longitude": "9.23202", "latitude": "48.79227"}
+            }
+          ]
+        }
+      },
+      {
+        "name": "Rock Night Live",
+        "type": "event",
+        "id": "Z698xZb_Z17kv4b",
+        "url": "https://www.ticketmaster.de/event/rock-night",
+        "images": [],
+        "dates": {
+          "start": {"localDate": "2026-11-07", "dateTBD": false, "timeTBA": true, "noSpecificTime": true}
+        },
+        "classifications": [
+          {"primary": true, "segment": {"name": "Music"}, "genre": {"name": "Rock"}}
+        ],
+        "_embedded": {
+          "venues": [
+            {
+              "name": "Kulturzentrum Neu",
+              "id": "Z598xZb_NEW1",
+              "city": {"name": "Stuttgart"},
+              "address": {"line1": "Teststraße 1"},
+              "location": {"longitude": "9.1500", "latitude": "48.7500"}
+            }
+          ]
+        }
+      },
+      {
+        "name": "Broken event without dates",
+        "id": "Z698xZb_Z17kv4c",
+        "dates": {}
+      }
+    ]
+  },
+  "page": {"size": 200, "totalElements": 3, "totalPages": 1, "number": 0}
+}
