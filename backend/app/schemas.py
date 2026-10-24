@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Literal
 
-from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field
+from pydantic import AwareDatetime, BaseModel, ConfigDict, EmailStr, Field, model_validator
 
 Category = Literal["concert", "sport", "theatre", "festival", "expo", "conference", "film", "community", "other"]
 Role = Literal["admin", "manager"]
@@ -200,3 +200,39 @@ class IngestRunOut(ORM):
 class SourceStatus(BaseModel):
     name: str
     enabled: bool
+
+
+# --- AI assistant ---
+
+MAX_CHAT_TURNS = 20
+MAX_CHAT_CHARS = 4000
+
+
+class ChatMessageIn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=MAX_CHAT_CHARS)
+
+
+class ChatIn(BaseModel):
+    messages: list[ChatMessageIn] = Field(min_length=1, max_length=MAX_CHAT_TURNS)
+
+    @model_validator(mode="after")
+    def _alternating_user_first_and_last(self):
+        for i, m in enumerate(self.messages):
+            expected = "user" if i % 2 == 0 else "assistant"
+            if m.role != expected:
+                raise ValueError("messages must alternate user/assistant, starting with user")
+        if self.messages[-1].role != "user":
+            raise ValueError("the last message must be from the user")
+        return self
+
+
+class ChatOut(BaseModel):
+    reply: str
+    tools_used: list[str]
+
+
+class ChatStatus(BaseModel):
+    enabled: bool
+    provider: str
+    model: str

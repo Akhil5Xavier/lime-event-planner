@@ -1,14 +1,14 @@
 import uuid
-from collections import defaultdict
+from dataclasses import asdict
 from datetime import date, timedelta
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.db import get_db
-from app.models import CATEGORIES, Event, User, Venue
+from app.models import Event, User, Venue
 from app.schemas import (
     AttendanceOverrideIn,
     CalendarDayOut,
@@ -22,45 +22,21 @@ from app.schemas import (
     RecommendationOut,
 )
 from app.security import get_current_user
-from app.services.deployment import PRIORITY_RANK, build_hotspots, recommend
-from app.services.events import day_bounds, events_between, local_days
+from app.services.planning import events_by_day, events_in_local_range, summarize_day
 
 router = APIRouter(prefix="/api/events", tags=["events"], dependencies=[Depends(get_current_user)])
 
-MAX_RANGE_DAYS = 100
-
-
-def _categories(category: str | None) -> list[str] | None:
-    if not category:
-        return None
-    cats = [c.strip() for c in category.split(",") if c.strip()]
-    unknown = set(cats) - set(CATEGORIES)
-    if unknown:
-        raise HTTPException(status_code=422, detail=f"Unknown category: {', '.join(sorted(unknown))}")
-    return cats
-
 
 def _range(db: Session, start: date, end: date, category: str | None, tz: ZoneInfo) -> list[Event]:
-    if end <= start:
-        raise HTTPException(status_code=422, detail="end must be after start")
-    if (end - start).days > MAX_RANGE_DAYS:
-        raise HTTPException(status_code=422, detail=f"Range is limited to {MAX_RANGE_DAYS} days")
-    range_start, _ = day_bounds(start, tz)
-    range_end, _ = day_bounds(end, tz)
-    return events_between(db, range_start, range_end, _categories(category))
+    try:
+        return events_in_local_range(db, start, end, category, tz)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
 
 
 def _summarize(events: list[Event], day: date, settings: Settings):
-    recs = {e.id: recommend(e, day, settings) for e in events}
-    hotspots = build_hotspots(events, recs, settings)
-    unlocated = sum(recs[e.id].extra_scooters for e in events if e.venue is None)
-    summary = DaySummary(
-        event_count=len(events),
-        total_attendance=sum(r.attendance for r in recs.values()),
-        extra_scooters=sum(h.extra_scooters for h in hotspots) + unlocated,
-        priority=max((r.priority for r in recs.values()), key=PRIORITY_RANK.__getitem__, default=None),
-    )
-    return recs, hotspots, summary
+    recs, hotspots, totals = summarize_day(events, day, settings)
+    return recs, hotspots, DaySummary(**asdict(totals))
 
 
 @router.get("", response_model=list[EventOut])
@@ -84,15 +60,13 @@ def calendar_summary(
     settings: Settings = Depends(get_settings),
 ):
     """Per-day event count, attendance and scooter need, for colouring calendar cells."""
-    tz = ZoneInfo(settings.timezone)
-    by_day: dict[date, list[Event]] = defaultdict(list)
-    for e in _range(db, start, end, category, tz):
-        for d in local_days(e, tz):
-            if start <= d < end:
-                by_day[d].append(e)
+    try:
+        by_day = events_by_day(db, start, end, category, ZoneInfo(settings.timezone))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
     out = []
-    for d in sorted(by_day):
-        _, _, summary = _summarize(by_day[d], d, settings)
+    for d, day_events in by_day.items():
+        _, _, summary = _summarize(day_events, d, settings)
         out.append(CalendarDayOut(date=d, **summary.model_dump()))
     return out
 

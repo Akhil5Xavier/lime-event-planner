@@ -31,7 +31,7 @@ class IngestAlreadyRunning(Exception):
 def _scrub(message: str) -> str:
     """Remove API credentials from error text (httpx errors include the request URL)."""
     s = get_settings()
-    for secret in (s.ticketmaster_api_key, s.predicthq_token):
+    for secret in (s.ticketmaster_api_key, s.predicthq_token, s.llm_api_key):
         if secret:
             message = message.replace(secret, "***")
     return message

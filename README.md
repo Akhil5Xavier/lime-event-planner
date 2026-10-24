@@ -152,6 +152,35 @@ Tune the numbers with the env vars in `.env.example`, or change `backend/app/ser
 
 API venues are matched to the 12 seeded Stuttgart venues by name or alias, or by distance (within 150 m). Unknown venues are created automatically. The seeded coordinates and capacities are approximate; correct them on the **Venues** page.
 
+## AI assistant (free)
+
+The **Assistant** page answers questions in plain language, for example "Which events are coming up next week?", "What's the busiest day this month?" or "Where should we put extra scooters on Saturday?".
+
+**How it works:** a language model gets four **read-only** tools (`search_events`, `get_day_plan`, `get_busiest_days`, `list_venues`). They call the same code as the calendar and day view, so answers match what the app shows. The model can't change any data. Days in answers link to the day view.
+
+**Set-up (free):**
+1. Create a free Groq key at <https://console.groq.com/keys>. No credit card is needed.
+2. Add it to `.env` (in `backend\.env` for local development): `LLM_API_KEY=gsk_...`
+3. Restart the backend. The Assistant page is enabled automatically.
+
+**Other providers:** any OpenAI-compatible API works. Change `LLM_BASE_URL`, `LLM_MODEL` and `LLM_API_KEY`; `.env.example` has ready-to-copy blocks for each.
+
+| Provider | Cost | Notes |
+|---|---|---|
+| **Groq** (default, `llama-3.3-70b-versatile`) | Free tier with daily and per-minute limits | Fast. `openai/gpt-oss-120b` is a good alternative. |
+| Google Gemini | Free tier | On the free tier Google may use prompts to improve its products. |
+| Hugging Face | Small free monthly credits | Choose a model that supports tool calling. |
+| Ollama | Free and fully local | Nothing leaves the machine. Needs RAM: a 7–8B model wants about 8 GB free, and small models are less reliable at tool calling. In Docker, `localhost` means the container itself, so point `LLM_BASE_URL` at the host. |
+
+**Limits and safety:**
+- At most 6 tool round trips per question.
+- Questions are limited to 4,000 characters, and conversations to 20 turns.
+- nginx allows 10 questions per minute per IP, which protects the free quota.
+- The API key never appears in logs or error messages.
+- Event titles from outside sources are treated as data, not instructions.
+
+**Privacy:** questions and the event data the tools return are sent to the chosen provider. Use Ollama if nothing may leave the company network.
+
 ## Operations notes
 
 - In development the scheduler runs inside the API (`SCHEDULER_ENABLED=true`, a single process). In Docker it runs in the `worker` service, and the API can use several workers. Overlapping syncs are blocked across processes through the `ingest_runs` table. A "running" row older than 2 hours is treated as left over from a crash.

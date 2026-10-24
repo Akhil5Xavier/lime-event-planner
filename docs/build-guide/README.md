@@ -24,6 +24,7 @@ The finished code is in this repository. Use it as your answer key: write each f
 | 7 | [Frontend](07-frontend.md) | The React app: API client, login, calendar, day view, map, forms, admin |
 | 8 | [Deployment and CI](08-deployment-and-ci.md) | Dockerfiles, nginx, Caddy, Compose, backups, GitHub Actions |
 | 9 | [Verification and lessons](09-verification-and-lessons.md) | How everything was tested end to end, and every bug found along the way |
+| 10 | [AI assistant](10-ai-assistant.md) | A free-model chatbot with read-only tools over the event data |
 
 ## The project in one picture
 

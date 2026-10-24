@@ -1,5 +1,6 @@
 from functools import lru_cache
 from typing import Literal
+from urllib.parse import urlparse
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -48,6 +49,34 @@ class Settings(BaseSettings):
     hotspot_radius_m: int = 600
 
     cors_origins: list[str] = ["http://localhost:5173", "http://localhost:8080"]
+
+    # AI assistant. Any OpenAI-compatible Chat Completions endpoint works: Groq (default,
+    # free tier), Google Gemini, Hugging Face, or a local Ollama. See .env.example.
+    llm_base_url: str = "https://api.groq.com/openai/v1"
+    llm_model: str = "llama-3.3-70b-versatile"
+    llm_api_key: str | None = None
+    # Upper bound on tool-call round trips per question, so a confused model can't loop.
+    llm_max_tool_rounds: int = 6
+    llm_timeout_seconds: float = 60
+
+    @property
+    def llm_is_local(self) -> bool:
+        host = urlparse(self.llm_base_url).hostname or ""
+        return host in ("localhost", "127.0.0.1", "::1") or host.endswith(".localhost")
+
+    @property
+    def llm_enabled(self) -> bool:
+        """Local servers (Ollama) need no key; hosted providers do."""
+        return bool(self.llm_api_key) or self.llm_is_local
+
+    @property
+    def llm_provider(self) -> str:
+        host = urlparse(self.llm_base_url).hostname or ""
+        for marker, name in (("groq", "Groq"), ("googleapis", "Google Gemini"),
+                             ("huggingface", "Hugging Face"), ("openai.com", "OpenAI")):
+            if marker in host:
+                return name
+        return "Ollama (local)" if self.llm_is_local else host
 
     def production_problems(self) -> list[str]:
         """Config that is acceptable for development but must not reach production."""

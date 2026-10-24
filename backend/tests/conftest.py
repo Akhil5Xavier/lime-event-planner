@@ -10,6 +10,8 @@ os.environ["ENVIRONMENT"] = "development"
 os.environ["ALERT_WEBHOOK_URL"] = ""
 os.environ["SENTRY_DSN"] = ""
 os.environ["LOG_FORMAT"] = "text"
+os.environ["LLM_API_KEY"] = ""
+os.environ["LLM_BASE_URL"] = "https://api.groq.com/openai/v1"
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
