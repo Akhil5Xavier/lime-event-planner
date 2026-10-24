@@ -26,6 +26,8 @@ from app.security import hash_password  # noqa: E402
 from app.seed.venues import seed_venues  # noqa: E402
 
 PASSWORD = "correct-horse"
+# bcrypt is slow on purpose (~0.3 s per hash); hash once instead of twice per test.
+PASSWORD_HASH = hash_password(PASSWORD)
 
 
 @pytest.fixture
@@ -36,8 +38,8 @@ def session_factory():
     with factory() as db:
         seed_venues(db)
         db.add_all([
-            User(email="admin@lime-ops.de", role="admin", password_hash=hash_password(PASSWORD)),
-            User(email="manager@lime-ops.de", role="manager", password_hash=hash_password(PASSWORD)),
+            User(email="admin@lime-ops.de", role="admin", password_hash=PASSWORD_HASH),
+            User(email="manager@lime-ops.de", role="manager", password_hash=PASSWORD_HASH),
         ])
         db.commit()
     yield factory

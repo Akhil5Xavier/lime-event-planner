@@ -150,7 +150,12 @@ Tune the numbers with the env vars in `.env.example`, or change `backend/app/ser
 - Eventbrite is not used because its public event search API has been retired.
 - To add a source, implement `Connector` in `backend/app/ingest/` (`fetch(start, end) -> list[NormalizedEvent]`) and register it in `runner.all_connectors()`.
 
-API venues are matched to the 12 seeded Stuttgart venues by name or alias, or by distance (within 150 m). Unknown venues are created automatically. The seeded coordinates and capacities are approximate; correct them on the **Venues** page.
+API venues are matched to the 12 seeded Stuttgart venues:
+- by the venue id remembered from an earlier sync;
+- by name or alias, but only within 3 km, so the "MHP Arena" in Ludwigsburg doesn't count as Stuttgart's;
+- by distance (within 150 m), only for venues that arrive without a name.
+
+Unknown venues are created automatically. Ticketmaster requests send `locale=*`; without it, German-only venues arrive without a name. The seed coordinates come from Ticketmaster where it lists the venue. Capacities are approximate; correct them on the **Venues** page.
 
 ## AI assistant (free)
 

@@ -156,19 +156,25 @@ It's created once per sync and loads **all venues into memory once**. With thous
 
 `resolve(ev)` tries, in order:
 
-1. **External ref:** a venue already linked to this Ticketmaster venue ID. Exact and instant.
-2. **Name or alias:**
+1. **External ref:** a venue already linked to this Ticketmaster venue ID. Exact and instant. If the incoming name doesn't fit the linked venue, the link is repaired (below).
+2. **Name or alias, within 3 km** (`NAME_MATCH_MAX_DISTANCE_M`):
    ```python
    incoming = normalize_name(ev.venue_name)
    if any(n == incoming or (len(n) >= 4 and n in incoming) for n in self._names(v)):
    ```
-   An exact match, or a known name *contained in* the incoming one: `"mhparena"` is in `"mhparenastuttgart"`. The `len(n) >= 4` rule stops short aliases like "LKA" or "ICS" from matching inside unrelated names; those must match exactly.
-3. **Nearest known venue within 150 m.**
-4. **Otherwise create a new venue** from the API's name and coordinates (capacity unknown), and add it to the in-memory list so later events in the same sync match it.
+   An exact match, or a known name *contained in* the incoming one: `"mhparena"` is in `"mhparenastuttgart"`. The `len(n) >= 4` rule stops short aliases like "LKA" or "ICS" from matching inside unrelated names; those must match exactly. **The distance check matters:** Ticketmaster also lists an "MHP Arena" in Ludwigsburg, 11.6 km away, a different arena with the same name.
+3. **Nearest known venue within 150 m, only when the venue has no name.** A *named* venue is never matched by distance alone. In the city centre a club ("Schräglage") about 70 m from the Marktplatz is still a different place, with a very different capacity.
+4. **Otherwise create a new venue** from the API's name and coordinates (capacity unknown), and add it to the in-memory list so later events in the same sync match it. A venue without a name is stored as `UNKNOWN_VENUE` ("Unknown venue").
 
 If the event has no venue information and no coordinates, it gets no venue (`None`).
 
 `_remember_ref(v, ev)`: when matched by name or distance, store the API's venue ID on the venue, so next time step 1 matches it.
+
+**Repairs** (in `resolve` and `_repair_placeholder`), for links made under older rules:
+- A linked venue called "Unknown venue" that now arrives *with* a name is either **merged** into the matching known venue (all its events are moved there with one `UPDATE`, then the placeholder is deleted) or **renamed** if no known venue matches.
+- A link whose name doesn't fit (for example Marktplatz ← Schräglage, made by the old distance rule) is **dropped**, and the event gets its proper venue.
+
+> **Ticketmaster `locale`:** the connector sends `locale=*`. Without it the API answers in English, and German-only venues arrive **without a name**. That's how the first real sync put 12 of 16 events on "Unknown venue" (chapter 9, bug 21).
 
 ### `_similar(a, b)`
 `difflib.SequenceMatcher(...).ratio()` on normalised titles returns 0..1. It's in Python's standard library, so no extra package is needed. "VfB Stuttgart - FC Bayern München" and "VfB Stuttgart vs. FC Bayern München" score about 0.9.

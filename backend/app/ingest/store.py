@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from datetime import timedelta
 from difflib import SequenceMatcher
 
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from app.geo import haversine_m, normalize_name
@@ -12,6 +12,12 @@ from app.ingest.base import NormalizedEvent
 from app.models import Event, Venue
 
 VENUE_MATCH_RADIUS_M = 150
+# A name match further away than this is a different place with the same name
+# (e.g. the "MHP Arena" in Ludwigsburg, 11.6 km from Stuttgart's MHPArena).
+NAME_MATCH_MAX_DISTANCE_M = 3000
+# Name given to venues that arrived without one (before Ticketmaster requests sent
+# locale=*). Such rows are repaired as soon as a sync delivers the real name.
+UNKNOWN_VENUE = "Unknown venue"
 DUPLICATE_START_TOLERANCE = timedelta(hours=1)
 DUPLICATE_TITLE_SIMILARITY = 0.6
 
@@ -26,7 +32,18 @@ class UpsertResult:
 class VenueResolver:
     """Maps API venue info to a Venue row, creating one when nothing matches.
 
-    Order: external ref, then name/alias, then a known venue within 150 m.
+    Order:
+      1. the venue already linked to this API venue id (external ref);
+      2. a venue whose name or alias matches, if it is within NAME_MATCH_MAX_DISTANCE_M;
+      3. only for venues that arrive *without a name*: a known venue within 150 m;
+      4. otherwise a new venue.
+    A named venue is never matched by distance alone: in the city centre a club 100 m from
+    the Marktplatz is still a different place with a very different capacity.
+
+    Links made under the old rules are repaired when a sync delivers a name that doesn't fit:
+    an "Unknown venue" placeholder is merged into the matching venue (or renamed), and a
+    wrong distance-based link is dropped so the event gets its proper venue.
+
     Loads venues once per run so a run with thousands of events stays cheap.
     """
 
@@ -38,40 +55,79 @@ class VenueResolver:
         names = [v.name] + [a for a in (v.aliases or "").split("|") if a]
         return [n for n in map(normalize_name, names) if n]
 
+    def _name_matches(self, v: Venue, venue_name: str) -> bool:
+        incoming = normalize_name(venue_name)
+        return any(n == incoming or (len(n) >= 4 and n in incoming) for n in self._names(v))
+
+    @staticmethod
+    def _near(v: Venue, ev: NormalizedEvent, radius_m: float) -> bool:
+        if ev.venue_lat is None or ev.venue_lng is None:
+            return True  # nothing to compare; trust the name
+        return haversine_m(v.lat, v.lng, ev.venue_lat, ev.venue_lng) <= radius_m
+
+    def _by_name(self, ev: NormalizedEvent, exclude: Venue | None = None) -> Venue | None:
+        for v in self.venues:
+            if v is exclude or v.name == UNKNOWN_VENUE:
+                continue
+            if self._name_matches(v, ev.venue_name) and self._near(v, ev, NAME_MATCH_MAX_DISTANCE_M):
+                return v
+        return None
+
     def resolve(self, ev: NormalizedEvent) -> Venue | None:
         if ev.venue_external_ref:
-            for v in self.venues:
-                if v.external_ref == ev.venue_external_ref:
-                    return v
+            linked = next((v for v in self.venues if v.external_ref == ev.venue_external_ref), None)
+            if linked is not None:
+                if not ev.venue_name or self._name_matches(linked, ev.venue_name):
+                    return linked
+                if linked.name == UNKNOWN_VENUE:
+                    return self._repair_placeholder(linked, ev)
+                # Linked under the old distance rule to a different place: drop the link.
+                linked.external_ref = None
 
         if ev.venue_name:
-            incoming = normalize_name(ev.venue_name)
-            for v in self.venues:
-                if any(n == incoming or (len(n) >= 4 and n in incoming) for n in self._names(v)):
-                    return self._remember_ref(v, ev)
-
-        if ev.venue_lat is not None and ev.venue_lng is not None:
+            match = self._by_name(ev)
+            if match is not None:
+                return self._remember_ref(match, ev)
+        elif ev.venue_lat is not None and ev.venue_lng is not None:
             nearest = min(
                 self.venues,
                 key=lambda v: haversine_m(v.lat, v.lng, ev.venue_lat, ev.venue_lng),
                 default=None,
             )
-            if nearest and haversine_m(nearest.lat, nearest.lng, ev.venue_lat, ev.venue_lng) <= VENUE_MATCH_RADIUS_M:
+            if nearest and self._near(nearest, ev, VENUE_MATCH_RADIUS_M):
                 return self._remember_ref(nearest, ev)
 
-            venue = Venue(
-                name=ev.venue_name or "Unknown venue",
-                address=ev.venue_address,
-                lat=ev.venue_lat,
-                lng=ev.venue_lng,
-                external_ref=ev.venue_external_ref,
-            )
-            self.db.add(venue)
-            self.db.flush()
-            self.venues.append(venue)
-            return venue
+        if ev.venue_lat is None or ev.venue_lng is None:
+            return None
+        venue = Venue(
+            name=ev.venue_name or UNKNOWN_VENUE,
+            address=ev.venue_address,
+            lat=ev.venue_lat,
+            lng=ev.venue_lng,
+            external_ref=ev.venue_external_ref,
+        )
+        self.db.add(venue)
+        self.db.flush()
+        self.venues.append(venue)
+        return venue
 
-        return None
+    def _repair_placeholder(self, placeholder: Venue, ev: NormalizedEvent) -> Venue:
+        """The API now tells us the real name of a venue stored as "Unknown venue"."""
+        target = self._by_name(ev, exclude=placeholder)
+        if target is None:
+            placeholder.name = ev.venue_name
+            placeholder.address = ev.venue_address or placeholder.address
+            return placeholder
+        # Same place as a known venue: move its events over and drop the placeholder.
+        self.db.flush()
+        self.db.execute(
+            update(Event).where(Event.venue_id == placeholder.id).values(venue_id=target.id),
+            execution_options={"synchronize_session": "fetch"},
+        )
+        self.db.execute(delete(Venue).where(Venue.id == placeholder.id))
+        self.db.expunge(placeholder)
+        self.venues.remove(placeholder)
+        return self._remember_ref(target, ev)
 
     def _remember_ref(self, v: Venue, ev: NormalizedEvent) -> Venue:
         if ev.venue_external_ref and not v.external_ref:

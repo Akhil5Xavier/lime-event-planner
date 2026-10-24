@@ -7,7 +7,11 @@ cd backend
 .venv\Scripts\python.exe -m pytest -q
 ```
 
-There are 35 tests in 4 files, taking about 15 seconds.
+This chapter covers the original 35 tests in 4 files. Two files were added later:
+- `test_assistant.py`: 33 tests for the AI assistant (chapter 10);
+- `test_venue_matching.py`: 8 tests for the venue-matching rules, the repair of old links, and migration `0003`.
+
+That's 76 in total, taking about 30 seconds.
 
 ---
 

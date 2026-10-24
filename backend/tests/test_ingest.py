@@ -56,6 +56,8 @@ def test_ticketmaster_fetch_pages_and_windows():
     assert len(calls) == 3
     assert calls[0]["latlong"] == "48.7758,9.1829"
     assert calls[0]["apikey"] == "KEY"
+    # Without locale=* German-only venues come back without a name.
+    assert calls[0]["locale"] == "*"
     assert {e.external_id for e in events} == {"Z698xZb_Z17kv4a", "Z698xZb_Z17kv4b"}
 
 

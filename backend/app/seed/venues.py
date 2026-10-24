@@ -1,5 +1,9 @@
-"""Major Stuttgart venues. Coordinates and capacities are approximate; adjust them
-in the app (Venues API) once the ops team has checked them on the ground."""
+"""Major Stuttgart venues.
+
+Coordinates come from Ticketmaster's Venue API (October 2026) where Ticketmaster lists the
+venue; Marktplatz and Staatstheater are not listed there and keep hand-placed coordinates.
+Capacities are approximate. Adjust both in the app once the ops team has checked them.
+Migration 0003 moves existing databases' seed venues to these coordinates."""
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -10,8 +14,8 @@ STUTTGART_VENUES = [
     {
         "name": "MHPArena",
         "address": "Mercedesstraße 87, 70372 Stuttgart",
-        "lat": 48.7923,
-        "lng": 9.2320,
+        "lat": 48.79164,
+        "lng": 9.23130,
         "capacity": 60000,
         "aliases": "MHP Arena|Mercedes-Benz Arena|Neckarstadion|Stadion Stuttgart",
         "scooter_zone_note": "NeckarPark; S-Bahn Bad Cannstatt and U11 carry most fans.",
@@ -19,48 +23,48 @@ STUTTGART_VENUES = [
     {
         "name": "Porsche-Arena",
         "address": "Mercedesstraße 69, 70372 Stuttgart",
-        "lat": 48.7884,
-        "lng": 9.2266,
+        "lat": 48.79387,
+        "lng": 9.22772,
         "capacity": 7500,
         "aliases": "Porsche Arena",
     },
     {
         "name": "Hanns-Martin-Schleyer-Halle",
         "address": "Mercedesstraße 69, 70372 Stuttgart",
-        "lat": 48.7893,
-        "lng": 9.2283,
+        "lat": 48.79370,
+        "lng": 9.22654,
         "capacity": 15500,
         "aliases": "Schleyerhalle|Schleyer-Halle|Hanns Martin Schleyer Halle",
     },
     {
         "name": "Cannstatter Wasen",
         "address": "Mercedesstraße 50, 70372 Stuttgart",
-        "lat": 48.7950,
-        "lng": 9.2195,
+        "lat": 48.79406,
+        "lng": 9.21951,
         "capacity": 100000,
         "aliases": "Wasen|Volksfest|Frühlingsfest|Cannstatter Volksfest",
     },
     {
         "name": "Liederhalle",
         "address": "Berliner Platz 1-3, 70174 Stuttgart",
-        "lat": 48.7781,
-        "lng": 9.1706,
+        "lat": 48.77969,
+        "lng": 9.16910,
         "capacity": 3500,
         "aliases": "Kultur- und Kongresszentrum Liederhalle|KKL|Beethovensaal|Hegelsaal|Mozartsaal",
     },
     {
         "name": "Messe Stuttgart",
         "address": "Messepiazza 1, 70629 Stuttgart",
-        "lat": 48.6942,
-        "lng": 9.1913,
+        "lat": 48.69354,
+        "lng": 9.19199,
         "capacity": 40000,
         "aliases": "Landesmesse Stuttgart|ICS Internationales Congresscenter Stuttgart|ICS",
     },
     {
         "name": "Schlossplatz",
         "address": "Schlossplatz, 70173 Stuttgart",
-        "lat": 48.7784,
-        "lng": 9.1800,
+        "lat": 48.78214,
+        "lng": 9.18129,
         "capacity": 30000,
         "aliases": "Schloßplatz",
     },
@@ -75,24 +79,24 @@ STUTTGART_VENUES = [
     {
         "name": "LKA-Longhorn",
         "address": "Heiligenwiesen 6, 70327 Stuttgart",
-        "lat": 48.7769,
-        "lng": 9.2413,
+        "lat": 48.76755,
+        "lng": 9.25173,
         "capacity": 1500,
         "aliases": "LKA Longhorn|LKA",
     },
     {
         "name": "Im Wizemann",
         "address": "Quellenstraße 7, 70376 Stuttgart",
-        "lat": 48.8036,
-        "lng": 9.2218,
+        "lat": 48.80811,
+        "lng": 9.20116,
         "capacity": 1600,
         "aliases": "Wizemann|Im Wizemann Halle|Im Wizemann Club",
     },
     {
         "name": "Theaterhaus Stuttgart",
         "address": "Siemensstraße 11, 70469 Stuttgart",
-        "lat": 48.8137,
-        "lng": 9.1625,
+        "lat": 48.81056,
+        "lng": 9.17965,
         "capacity": 1000,
         "aliases": "Theaterhaus",
     },

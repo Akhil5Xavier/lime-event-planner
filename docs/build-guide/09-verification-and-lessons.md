@@ -41,6 +41,11 @@ After each major part, in this order:
 | 18 | nginx security headers disappearing on `/assets/` | Knowing nginx's `add_header` inheritance rule | Headers only at server level; `expires` for caching | Read the docs on inheritance and overrides. |
 | 19 | The rate limit would have blocked all users together | Thinking through the proxy chain (Caddy → nginx) | `set_real_ip_from` + `X-Forwarded-For` | Behind a proxy, "the client IP" is the proxy's unless you configure it. |
 | 20 | The `git commit -F -` message wasn't passed in PowerShell | The command errored | Write the message to a file, then `-F file` | PowerShell pipes and arguments differ from bash. |
+| 21 | 12 of 16 real events landed on venues called "Unknown venue" | The first **real** sync; the AI assistant's answer showed "at Unknown venue" | Send `locale=*`; merge the placeholders on the next sync | The API's default locale hid German-only names. Test against the real API early; fixtures only contain what you thought of. |
+| 22 | A club (Schräglage) was matched to the Marktplatz, 20,000 capacity | Looking up the venue IDs stored in the database | Match by distance only when there's no name; drop wrong links on re-sync | In a dense city centre, "within 150 m" isn't "the same place". |
+| 23 | Ludwigsburg's "MHP Arena" would have matched Stuttgart's MHPArena | Searching Ticketmaster's venue list for each seed venue | Name matches must also be within 3 km | Names aren't unique; always check location as well. |
+| 24 | Seed coordinates were up to 1.6 km off (Wizemann, LKA, Theaterhaus) | Comparing with Ticketmaster's coordinates | New seed values plus migration `0003`, which only moves rows still at the old values | Hand-placed coordinates need checking. A data migration must not overwrite manual corrections. |
+| 25 | The test suite slowed to 142 s | Timing it; one bcrypt hash took 0.33 s | Hash the test password once in `conftest.py` → 32 s | Slow-by-design code (bcrypt) adds up in fixtures. |
 
 ---
 
@@ -48,7 +53,7 @@ After each major part, in this order:
 
 Be honest about gaps. At the end of the original build:
 
-- **The real Ticketmaster API** has never been called. The connector was built from the documentation and a hand-made fixture. The first real sync may reveal field differences. Run `python -m app.cli ingest` with a key and compare the results with ticketmaster.de.
+- **The real Ticketmaster API** was first called after the main build. It revealed bugs 21–24 above, all fixed and re-checked with a second real sync (0 unknown venues). Keep comparing synced events with ticketmaster.de now and then.
 - **The Docker stack and CI** have never been run: Docker wasn't installed and the repository isn't on GitHub yet.
 - **The recommendation numbers** are starting guesses. Compare `SCOOTER_SHARE`, the fill factors and the windows with real Lime ride data around past events. This is what decides whether the tool is useful.
 - **Venue coordinates and capacities** are approximate; have the ops team check them.

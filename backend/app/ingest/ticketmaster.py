@@ -153,6 +153,9 @@ class TicketmasterConnector(Connector):
                     "size": PAGE_SIZE,
                     "page": page,
                     "sort": "date,asc",
+                    # Without this the API answers in its default (English) locale, and venues
+                    # that only have German data come back without a name.
+                    "locale": "*",
                 }
                 data = self._get(params)
                 for raw in (data.get("_embedded") or {}).get("events") or []:
