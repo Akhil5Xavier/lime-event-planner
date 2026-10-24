@@ -8,6 +8,8 @@ Internal tool for the Lime Stuttgart mobility center. It collects upcoming event
 - **Venues**: managers can correct capacity and add parking notes for the field team.
 - **Admin**: data-source status, sync history, "Sync now", user management.
 
+**Want to understand or rebuild it?** [docs/build-guide](docs/build-guide/README.md) explains every file and function, step by step, in the order it was built.
+
 ## Architecture
 
 ```
