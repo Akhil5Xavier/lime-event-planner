@@ -31,7 +31,32 @@ def init_db() -> None:
     command.upgrade(cfg, "head")
     with SessionLocal() as db:
         added = seed_venues(db)
+        admin = bootstrap_admin(db)
     print(f"Database ready. Seeded {added} new venue(s).")
+    if admin:
+        print(f"Created first admin {admin} from ADMIN_EMAIL / ADMIN_PASSWORD.")
+
+
+def bootstrap_admin(db) -> str | None:
+    """Create the first admin from settings, but only while there are no users at all.
+
+    Once any user exists this does nothing, so changing ADMIN_PASSWORD later never resets a
+    password, and deleting the variables after the first start is safe.
+    """
+    from app.config import get_settings
+
+    s = get_settings()
+    if not s.admin_email or not s.admin_password:
+        return None
+    if db.scalar(select(func.count()).select_from(User)):
+        return None
+    if len(s.admin_password) < 8:
+        print("ADMIN_PASSWORD must be at least 8 characters; no admin created.", file=sys.stderr)
+        return None
+    email = s.admin_email.strip().lower()
+    db.add(User(email=email, name="Admin", role="admin", password_hash=hash_password(s.admin_password)))
+    db.commit()
+    return email
 
 
 def create_user(email: str, role: str, name: str | None) -> None:

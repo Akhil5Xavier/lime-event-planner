@@ -1,6 +1,8 @@
-# HTTPS entry point. Caddy gets and renews a Let's Encrypt certificate for $DOMAIN automatically
-# (DNS must point at this server and ports 80/443 must be reachable). With DOMAIN=localhost it
-# uses its own local certificate instead, for testing.
+# Entry point for all traffic. DOMAIN (from .env) decides the mode:
+#   events.example.com  -> HTTPS with a Let's Encrypt certificate, obtained and renewed
+#                          automatically (DNS must point here, ports 80/443 reachable)
+#   localhost           -> HTTPS with Caddy's own local certificate (browser warns once)
+#   http://localhost    -> plain HTTP on port 80, for running on your own machine
 {$DOMAIN} {
 	encode zstd gzip
 	header Strict-Transport-Security "max-age=31536000; includeSubDomains"

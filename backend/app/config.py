@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # Slack-compatible incoming webhook; receives a message when a sync fails or finds nothing.
     alert_webhook_url: str | None = None
 
+    # First admin, created by `init-db` (which runs on every container start) only while
+    # the database has no users at all. Lets `docker compose up` produce a usable app in one go.
+    admin_email: str | None = None
+    admin_password: str | None = None
+
     timezone: str = "Europe/Berlin"
     city_lat: float = 48.7758
     city_lng: float = 9.1829

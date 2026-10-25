@@ -147,3 +147,53 @@ def test_audit_fields(client, manager_headers, admin_headers):
 
     day = client.get("/api/events/day/2026-11-07", headers=manager_headers).json()
     assert day["events"][0]["updated_by"]["email"] == "admin@lime-ops.de"
+
+
+# --- one-command start: first admin and catch-up sync -------------------------------------
+
+def test_bootstrap_admin_only_when_no_users(session_factory, monkeypatch):
+    import app.config
+    from app.cli import bootstrap_admin
+    from app.models import User
+    from app.security import verify_password
+
+    monkeypatch.setattr(app.config, "get_settings",
+                        lambda: Settings(admin_email="Boss@Lime-Ops.de", admin_password="first-pass-123"))
+    with session_factory() as db:
+        assert bootstrap_admin(db) is None  # conftest already created users
+        db.query(User).delete()
+        db.commit()
+        assert bootstrap_admin(db) == "boss@lime-ops.de"
+        user = db.scalar(select(User))
+        assert user.role == "admin" and verify_password("first-pass-123", user.password_hash)
+        # A second start must not create another admin or touch the password.
+        monkeypatch.setattr(app.config, "get_settings",
+                            lambda: Settings(admin_email="boss@lime-ops.de", admin_password="changed-pass-456"))
+        assert bootstrap_admin(db) is None
+        assert verify_password("first-pass-123", db.scalar(select(User)).password_hash)
+
+
+def test_bootstrap_admin_needs_both_settings_and_a_real_password(db, monkeypatch):
+    import app.config
+    from app.cli import bootstrap_admin
+    from app.models import User
+
+    db.query(User).delete()
+    db.commit()
+    for settings in (Settings(), Settings(admin_email="a@lime-ops.de"),
+                     Settings(admin_email="a@lime-ops.de", admin_password="short")):
+        monkeypatch.setattr(app.config, "get_settings", lambda s=settings: s)
+        assert bootstrap_admin(db) is None
+    assert db.query(User).count() == 0
+
+
+def test_worker_catches_up_when_data_is_stale(session_factory, monkeypatch):
+    from app import scheduler
+
+    assert scheduler.needs_catch_up(session_factory) is False  # no source configured
+    monkeypatch.setattr(runner, "all_connectors", lambda: [FakeConnector("ticketmaster")])
+    assert scheduler.needs_catch_up(session_factory) is True   # never synced
+    _add_run(session_factory, "success", finished_ago=timedelta(hours=40))
+    assert scheduler.needs_catch_up(session_factory) is True   # too old
+    _add_run(session_factory, "success", finished_ago=timedelta(hours=3))
+    assert scheduler.needs_catch_up(session_factory) is False

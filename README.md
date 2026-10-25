@@ -93,9 +93,33 @@ docker compose up -d --build --wait
 ```
 Migrations run automatically when the backend starts. To change Python dependencies, edit `backend/requirements.txt` and regenerate `requirements.lock` (instructions at the top of that file).
 
-### Testing the full stack locally
+### Running everything on your own machine (one command)
 
-Install Docker Desktop, set `DOMAIN=localhost` in `.env`, run `docker compose up -d --build --wait`, and open <https://localhost>. Caddy uses its own local certificate, so the browser will warn once.
+**One-time setup (Windows):**
+1. In an **administrator** PowerShell, run `wsl --install`, then restart the PC.
+2. Install Docker Desktop (`winget install Docker.DockerDesktop`, or from docker.com) and start it once. Docker Desktop is free for personal use and small companies; larger companies need a paid subscription.
+3. Create the root `.env` from `.env.example` with:
+   - `DOMAIN=http://localhost`;
+   - a long random `JWT_SECRET` and a `POSTGRES_PASSWORD`;
+   - `ADMIN_EMAIL` and `ADMIN_PASSWORD` for your first login;
+   - your `TICKETMASTER_API_KEY` and `LLM_API_KEY`.
+
+**Start**, from the project root (`D:\Projects\Lime`):
+```bash
+docker compose up -d --build --wait
+```
+From `D:\Projects\Lime\backend` the same command is:
+```bash
+docker compose -f ..\docker-compose.yml up -d --build --wait
+```
+
+The first build takes a few minutes; after that, starting takes seconds. When the command returns, open **<http://localhost>** and sign in with `ADMIN_EMAIL` / `ADMIN_PASSWORD`. On a fresh database the admin is created automatically, and the worker runs a first Ticketmaster sync straight away, so events appear within about a minute.
+
+| Task | Command (from the project root) |
+|---|---|
+| Logs | `docker compose logs -f backend worker` |
+| Stop (keeps data) | `docker compose down` |
+| Stop and delete all data | `docker compose down -v` |
 
 ## Continuous integration
 
