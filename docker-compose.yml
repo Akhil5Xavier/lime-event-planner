@@ -97,7 +97,8 @@ services:
       - ./ops:/ops:ro
       - ./backups:/backups
     depends_on:
-      db:
+      # Wait for the backend's migrations, so the start-up backup isn't of an empty database.
+      backend:
         condition: service_healthy
     restart: unless-stopped
     logging: *logging
