@@ -129,6 +129,15 @@ npm install
 npm run dev                        # http://localhost:5173
 ```
 
+**Windows: "DLL load failed … An Application Control policy has blocked this file"** on `import sqlalchemy`. Windows Smart App Control blocks SQLAlchemy's compiled speed-up files (`*_cy*.pyd`). SQLAlchemy works the same without them, so install its pure-Python package instead (same version as the lockfile; stop any running backend first):
+
+```bash
+.venv\Scripts\python.exe -m pip download sqlalchemy==2.1.6 --no-deps --only-binary=:all: --platform any --python-version 3.15 --implementation py -d %TEMP%\sqla
+.venv\Scripts\python.exe -m pip install --force-reinstall --no-deps %TEMP%\sqla\sqlalchemy-2.1.6-py3-none-any.whl
+```
+
+Repeat this after recreating the virtual environment. Docker and Linux aren't affected.
+
 Other CLI commands: `python -m app.cli ingest` runs a sync immediately. For a non-interactive `create-user`, set `LIME_USER_PASSWORD`.
 
 ## How the recommendation works
