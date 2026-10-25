@@ -194,7 +194,7 @@ Unknown venues are created automatically. Ticketmaster requests send `locale=*`;
 
 ## AI assistant (free)
 
-The **Assistant** page answers questions in plain language, for example "Which events are coming up next week?", "What's the busiest day this month?" or "Where should we put extra scooters on Saturday?".
+**Limy**, the assistant, is available on every page through a round green button (bottom right). Click it to open a small chat; while the chat is closed you can drag the button anywhere, and the position is remembered. The **Assistant** page is the full-size version, and conversations carry over between the two. Limy answers questions in plain language, for example "Which events are coming up next week?", "What's the busiest day this month?" or "Where should we put extra scooters on Saturday?".
 
 **How it works:** a language model gets four **read-only** tools (`search_events`, `get_day_plan`, `get_busiest_days`, `list_venues`). They call the same code as the calendar and day view, so answers match what the app shows. The model can't change any data. Days in answers link to the day view.
 

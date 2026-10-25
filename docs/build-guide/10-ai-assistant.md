@@ -197,3 +197,27 @@ After these fixes, the real model answered correctly in the browser: the right e
 1. `pytest -q` shows 77 passed, and `npm run build` is clean.
 2. Put a free Groq key in `backend\.env` (`LLM_API_KEY=...`) and restart the backend.
 3. Open **Assistant** and ask "Which events are coming up next week?", then "Where should we put extra scooters on <a busy day>?". Compare the numbers with the day view.
+
+## 10.15 Limy: the floating chat button
+
+The assistant is called **Limy**, and a round button on every page (except the Assistant page) opens a small chat. Files in `frontend/src/assistant/`:
+
+| File | What it does |
+|---|---|
+| `useChat.ts` | The conversation: `turns`, `ask()`, `reset()`, error recovery. It used to be inside the Assistant page; it moved here so the page and the pop-up share one implementation **and one conversation** (same `sessionStorage` key). |
+| `ChatThread.tsx` | Message bubbles, Markdown with in-app day links, suggestion buttons, "Looking that up…". A `compact` prop gives smaller text for the pop-up. |
+| `ChatComposer.tsx` | The text box (Enter sends, Shift+Enter adds a new line). `forwardRef`, so the pop-up can focus it when it opens. |
+| `NotConfigured.tsx` | The "an admin needs to add a key" message, shared by both. |
+| `LimyIcon.tsx` | Limy's face (inline SVG, inherits the text colour). |
+| `LimyWidget.tsx` | The draggable button; always loaded with the layout (~1.4 KB gzipped). |
+| `LimyPanel.tsx` | The chat window, **lazy-loaded** on first open, so Markdown isn't downloaded until someone uses it. |
+
+How `LimyWidget` works:
+- **Click vs drag.** Pointer events (`pointerdown`, `pointermove`, `pointerup`, with `setPointerCapture`) also work for touch. A press only becomes a drag after moving 5 px, and the click event that follows a drag is ignored. Without that, every drag would also open the chat. Dragging is only enabled while the chat is closed, as requested.
+- **The position is stored as the distance from the bottom-right corner** (`right`, `bottom`), not as x/y. When the window is resized, a button left in the corner stays in the corner. It's clamped to stay on screen (`clamp`), re-clamped on resize, and saved in `localStorage` (wrapped in try/catch).
+- **`panelStyle()`** places the window **above** the button, else **below**, else **left**, else **right**, so it never covers the button. The first version only tried above and below; with the button dragged to mid-screen, the window was squeezed on top of the button. This was found by measuring the two rectangles in the browser.
+- **Escape** closes the chat and returns focus to the button. `aria-label`, `aria-expanded` and `role="dialog"` describe it to screen readers.
+- **Layers:** Limy sits at `z-index` 1100, above the map's controls (1000). The add/edit-event dialog moved from 1000 to 1200, so it covers Limy.
+- **Hidden on `/assistant`:** `Layout.tsx` checks `useLocation().pathname`.
+
+The system prompt now starts "You are Limy, …", so the model introduces itself by name.

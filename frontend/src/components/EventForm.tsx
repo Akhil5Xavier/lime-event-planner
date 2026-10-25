@@ -96,7 +96,7 @@ export default function EventForm({ event, defaultDate, onClose, onSaved }: Prop
   }
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[1200] flex items-start justify-center overflow-y-auto bg-black/40 p-4" onClick={onClose}>
       <form
         onSubmit={onSubmit}
         onClick={(e) => e.stopPropagation()}

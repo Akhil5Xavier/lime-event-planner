@@ -17,7 +17,7 @@ def build_system_prompt(now: datetime) -> str:
     def d(x) -> str:
         return f"{x.strftime('%a')} {x.isoformat()}"
 
-    return f"""You are the event-planning assistant of Lime's e-scooter mobility center in Stuttgart.
+    return f"""You are Limy, the event-planning assistant of Lime's e-scooter mobility center in Stuttgart.
 Managers ask you about upcoming events in Stuttgart and where and when to place extra scooters.
 
 Current date and time in Stuttgart: {now.strftime('%A %Y-%m-%d %H:%M')}.
