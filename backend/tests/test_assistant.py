@@ -77,8 +77,8 @@ def test_search_events_filters(seeded):
                     venue="porsche")["events"][0]["title"] == "Pop concert"
         assert call(db, "search_events", start_date="2026-11-01", end_date="2026-11-30",
                     text="vfb")["total"] == 1
-        assert call(db, "search_events", start_date="2026-11-01", end_date="2026-11-30",
-                    category="expo")["events"][0]["end"] == "2026-11-12 17:00"
+        fair = call(db, "search_events", start_date="2026-11-01", end_date="2026-11-30", category="expo")["events"][0]
+        assert (fair["date"], fair["end"], fair["last_day"]) == ("2026-11-10", "2026-11-12 17:00", "2026-11-12")
         assert call(db, "search_events", start_date="2026-11-01", end_date="2026-11-30",
                     min_visitors=10000)["total"] == 2  # match (54k) and fair (20k/day)
         limited = call(db, "search_events", start_date="2026-11-01", end_date="2026-11-30", limit=1)
@@ -175,6 +175,12 @@ def test_agent_runs_tools_and_returns_answer(seeded):
     assert json.loads(second[-1]["content"])["total"] == 3
 
 
+def test_reply_cleanup_repairs_lenticular_brackets():
+    # Seen live from openai/gpt-oss-120b on Groq.
+    assert agent.clean_reply(" 54 000 Besucher【Sat 24 Oct](/day/2026-10-24) ") == \
+        "54 000 Besucher[Sat 24 Oct](/day/2026-10-24)"
+
+
 def test_agent_stops_after_max_tool_rounds(db):
     count = 0
 
@@ -228,7 +234,7 @@ def test_chat_requires_login(client):
 
 def test_chat_disabled_without_key(client, manager_headers):
     assert client.get("/api/chat/status", headers=manager_headers).json() == {
-        "enabled": False, "provider": "Groq", "model": "llama-3.3-70b-versatile"}
+        "enabled": False, "provider": "Groq", "model": "openai/gpt-oss-120b"}
     resp = client.post("/api/chat", headers=manager_headers, json={"messages": [{"role": "user", "content": "hi"}]})
     assert resp.status_code == 503
 

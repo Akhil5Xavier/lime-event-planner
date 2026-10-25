@@ -166,6 +166,9 @@ def _when(event: Event, tz: ZoneInfo) -> dict:
         out["end"] = end.strftime("%H:%M")
     else:
         out["end"] = end.strftime("%Y-%m-%d %H:%M")
+        # Models tend to read only "date" and present multi-day events as one day; an explicit
+        # field gets the range into the answer.
+        out["last_day"] = end.date().isoformat()
     return out
 
 

@@ -41,7 +41,7 @@ The day-summary and date-range logic was in `api/events.py` as private helpers t
 
 ```python
 llm_base_url: str = "https://api.groq.com/openai/v1"
-llm_model: str = "llama-3.3-70b-versatile"
+llm_model: str = "openai/gpt-oss-120b"
 llm_api_key: str | None = None
 llm_max_tool_rounds: int = 6
 llm_timeout_seconds: float = 60
@@ -132,7 +132,7 @@ Details that matter:
 
 ## 10.9 `app/api/chat.py` and schemas
 
-- `GET /api/chat/status` returns `{enabled, provider, model}`, so the UI can show "not set up yet" or "Groq, llama-3.3-70b-versatile".
+- `GET /api/chat/status` returns `{enabled, provider, model}`, so the UI can show "not set up yet" or "Groq, openai/gpt-oss-120b".
 - `POST /api/chat` with `ChatIn {messages: [{role, content}]}`:
   - returns **503** when not configured and **502** with the friendly message on `LLMError`;
   - `ChatIn` validates: 1–20 turns, roles only `user` or `assistant` (a client can't inject a `system` message), alternating, starting and ending with `user`, each at most 4,000 characters.
@@ -176,8 +176,24 @@ That confirmed the bubbles, the Markdown, the in-app day links and the "Looked u
 1. **`localhost` cost about 2 s per model call on Windows.** It tries IPv6 `::1` first, then falls back to `127.0.0.1`. That's why `.env.example` uses `127.0.0.1` for Ollama.
 2. **The first real Ticketmaster sync** showed 12 of 16 events on venues called "Unknown venue". The connector didn't send a `locale`, and German venues have no English-locale name. The fix is `locale=*` in the request, done as a separate follow-up change.
 
+## 10.14 The live test with a real model, and what it changed
+
+The first real run with a Groq key found four things that no fake provider could have shown:
+
+| Found | Cause | Fix |
+|---|---|---|
+| "Model 'llama-3.3-70b-versatile' was not found" | Groq had retired the Llama models, although its docs page still listed them | The default is now `openai/gpt-oss-120b`. List the models a key can use with `GET {LLM_BASE_URL}/models` (command in the README) |
+| English questions answered in German | The German event titles pulled the model into German; "the user's language" was too vague | The prompt now says: reply in the language of the user's latest message, keep titles as they are |
+| A 3-day fair shown as one day | The model read `date` and ignored the `end` date | The tools add an explicit `last_day` for multi-day events, and the prompt asks for the whole range |
+| "540 000 Besucher" for a 54,000-capacity match (once) | The model mangled the digits while formatting the number German-style | The prompt says: copy numbers exactly; thousands with a comma or a space, never a dot. It didn't recur in later runs |
+| Links like `【Sat 24 Oct](/day/…)` | gpt-oss models use 【】 as citation brackets | `clean_reply()` in `agent.py` turns them back into `[ ]` before the UI sees the text |
+
+After these fixes, the real model answered correctly in the browser: the right events, multi-day ranges, numbers matching the Day view, working day links, a German question answered in German, and a follow-up ("which of these needs the most scooters?") resolved from the history. Typical answer time was 1–3 s. When the free per-minute quota ran out, the UI showed the friendly "try again in a minute" message.
+
+**Lesson:** an AI feature needs testing against the real model. Fakes prove the plumbing; only the real model shows how it actually reads your data. Keep the disclaimer under the chat ("can contain mistakes"), and keep the Day view one click away for checking numbers.
+
 ## Checkpoint
 
-1. `pytest -q` shows 68 passed, and `npm run build` is clean.
+1. `pytest -q` shows 77 passed, and `npm run build` is clean.
 2. Put a free Groq key in `backend\.env` (`LLM_API_KEY=...`) and restart the backend.
 3. Open **Assistant** and ask "Which events are coming up next week?", then "Where should we put extra scooters on <a busy day>?". Compare the numbers with the day view.

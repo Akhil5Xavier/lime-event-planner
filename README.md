@@ -179,9 +179,14 @@ The **Assistant** page answers questions in plain language, for example "Which e
 
 **Other providers:** any OpenAI-compatible API works. Change `LLM_BASE_URL`, `LLM_MODEL` and `LLM_API_KEY`; `.env.example` has ready-to-copy blocks for each.
 
+**"Model … was not found":** free providers retire models (Groq dropped the Llama models this project first used). List what your key can use, from `backend`, and set one with tool support as `LLM_MODEL`:
+```bash
+.venv\Scripts\python.exe -c "import httpx; from app.config import Settings as S; s=S(); print([m['id'] for m in httpx.get(s.llm_base_url+'/models', headers={'Authorization':'Bearer '+s.llm_api_key}).json()['data']])"
+```
+
 | Provider | Cost | Notes |
 |---|---|---|
-| **Groq** (default, `llama-3.3-70b-versatile`) | Free tier with daily and per-minute limits | Fast. `openai/gpt-oss-120b` is a good alternative. |
+| **Groq** (default, `openai/gpt-oss-120b`) | Free tier with daily and per-minute limits | Fast. `qwen/qwen3.8-27b` is an alternative. |
 | Google Gemini | Free tier | On the free tier Google may use prompts to improve its products. |
 | Hugging Face | Small free monthly credits | Choose a model that supports tool calling. |
 | Ollama | Free and fully local | Nothing leaves the machine. Needs RAM: a 7–8B model wants about 8 GB free, and small models are less reliable at tool calling. In Docker, `localhost` means the container itself, so point `LLM_BASE_URL` at the host. |

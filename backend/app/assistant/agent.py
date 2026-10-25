@@ -25,6 +25,15 @@ GAVE_UP = ("I couldn't finish looking that up. Please try a narrower question, "
            "for example one week or one venue at a time.")
 
 
+def clean_reply(text: str) -> str:
+    """Repair formatting quirks of some open models before the text reaches the UI.
+
+    gpt-oss models sometimes write lenticular brackets (their citation style) instead of
+    Markdown's, e.g. "【Sat 24 Oct](/day/2026-10-24)", which breaks the day link.
+    """
+    return text.replace("【", "[").replace("】", "]").strip()
+
+
 @dataclass
 class ChatResult:
     reply: str
@@ -59,7 +68,7 @@ def answer(
         if not tool_calls:
             log.info("Assistant answered: model=%s rounds=%s tools=%s prompt_tokens=%s completion_tokens=%s",
                      settings.llm_model, round_no, tools_used, prompt_tokens, completion_tokens)
-            reply = (message.get("content") or "").strip()
+            reply = clean_reply(message.get("content") or "")
             return ChatResult(reply=reply or "Sorry, I have no answer to that.", tools_used=tools_used)
 
         if round_no == settings.llm_max_tool_rounds:
