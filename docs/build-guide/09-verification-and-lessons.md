@@ -45,9 +45,9 @@ After each major part, in this order:
 | 22 | A club (Schräglage) was matched to the Marktplatz, 20,000 capacity | Looking up the venue IDs stored in the database | Match by distance only when there's no name; drop wrong links on re-sync | In a dense city centre, "within 150 m" isn't "the same place". |
 | 23 | Ludwigsburg's "MHP Arena" would have matched Stuttgart's MHPArena | Searching Ticketmaster's venue list for each seed venue | Name matches must also be within 3 km | Names aren't unique; always check location as well. |
 | 24 | Seed coordinates were up to 1.6 km off (Wizemann, LKA, Theaterhaus) | Comparing with Ticketmaster's coordinates | New seed values plus migration `0003`, which only moves rows still at the old values | Hand-placed coordinates need checking. A data migration must not overwrite manual corrections. |
+| 25 | The test suite slowed to 142 s | Timing it; one bcrypt hash took 0.33 s | Hash the test password once in `conftest.py` → 32 s | Slow-by-design code (bcrypt) adds up in fixtures. |
 | 26 | Calendar ‹ › buttons had no arrows in Docker only | First run in Docker; the browser console showed a CSP violation | `font-src 'self' data:`, because FullCalendar embeds its icon font as a `data:` URI | Security headers only exist in production (nginx), not on the Vite dev server: test the real stack in a browser. |
 | 27 | The first backup was of an empty database | Its size: 367 bytes | The backup service waits for `backend` (migrations) to be healthy, not just `db` | "Started" doesn't mean "ready". Order services on the condition you actually need. |
-| 25 | The test suite slowed to 142 s | Timing it; one bcrypt hash took 0.33 s | Hash the test password once in `conftest.py` → 32 s | Slow-by-design code (bcrypt) adds up in fixtures. |
 
 ---
 

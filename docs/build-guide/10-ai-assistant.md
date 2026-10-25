@@ -157,7 +157,7 @@ location = /api/chat { limit_req zone=chat burst=3 nodelay; limit_req_status 429
 - Suggestion buttons for an empty chat; Enter sends and Shift+Enter adds a new line; "Looking that up…" while waiting; a "New chat" button; a "Looked up: …" note; and a short disclaimer that AI answers can contain mistakes.
 - Lazy-loaded route `/assistant` with a menu link in `Layout.tsx`. It's its own chunk, so other pages don't download react-markdown.
 
-## 10.12 Tests: `tests/test_assistant.py` (33 tests, no real AI calls)
+## 10.12 Tests: `tests/test_assistant.py` (34 tests, no real AI calls)
 
 - **Tools** against a seeded database: inclusive ranges and sorting, the full row for the VfB match, each filter, `limit` with `total` and `shown`, the day plan **equal to the day view endpoint**, busiest days, venue alias search, and 8 parameterised bad-input cases returning `Error:`.
 - **Prompt:** the computed date ranges for a fixed Monday.
@@ -194,7 +194,7 @@ After these fixes, the real model answered correctly in the browser: the right e
 
 ## Checkpoint
 
-1. `pytest -q` shows 77 passed, and `npm run build` is clean.
+1. `pytest -q` shows 85 passed, and `npm run build` is clean.
 2. Put a free Groq key in `backend\.env` (`LLM_API_KEY=...`) and restart the backend.
 3. Open **Assistant** and ask "Which events are coming up next week?", then "Where should we put extra scooters on <a busy day>?". Compare the numbers with the day view.
 
@@ -221,3 +221,5 @@ How `LimyWidget` works:
 - **Hidden on `/assistant`:** `Layout.tsx` checks `useLocation().pathname`.
 
 The system prompt now starts "You are Limy, …", so the model introduces itself by name.
+
+Next: [Chapter 11, Software stack](11-software-stack.md).
