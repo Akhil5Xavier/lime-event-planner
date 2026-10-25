@@ -118,6 +118,8 @@ The first build takes a few minutes; after that, starting takes seconds. When th
 | Task | Command (from the project root) |
 |---|---|
 | Logs | `docker compose logs -f backend worker` |
+| Set a new password (prompts twice) | `docker compose exec backend python -m app.cli set-password you@example.com` |
+| List users | `docker compose exec db psql -U lime -d lime -c "select email, role, is_active from users;"` |
 | Stop (keeps data) | `docker compose down` |
 | Stop and delete all data | `docker compose down -v` |
 
@@ -162,7 +164,7 @@ npm run dev                        # http://localhost:5173
 
 Repeat this after recreating the virtual environment. Docker and Linux aren't affected.
 
-Other CLI commands: `python -m app.cli ingest` runs a sync immediately. For a non-interactive `create-user`, set `LIME_USER_PASSWORD`.
+Other CLI commands: `python -m app.cli ingest` runs a sync immediately; `python -m app.cli set-password EMAIL` sets a new password. For a non-interactive `create-user`, set `LIME_USER_PASSWORD`.
 
 ## How the recommendation works
 

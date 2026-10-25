@@ -2,6 +2,7 @@
 
   python -m app.cli init-db                      apply migrations and seed Stuttgart venues
   python -m app.cli create-user EMAIL [--role admin|manager] [--name NAME]
+  python -m app.cli set-password EMAIL          set a new password (prompts twice)
   python -m app.cli ingest                       run ingestion once, now
   python -m app.cli scheduler                    run the nightly sync scheduler (worker service)
 """
@@ -72,6 +73,28 @@ def create_user(email: str, role: str, name: str | None) -> None:
     print(f"Created {role} {email}.")
 
 
+def set_password(email: str, session_factory=SessionLocal) -> None:
+    """Set a user's password, e.g. after forgetting the generated ADMIN_PASSWORD.
+
+    Prompts twice so a typo can't lock you out; LIME_USER_PASSWORD skips the prompt for scripts.
+    """
+    password = os.environ.get("LIME_USER_PASSWORD")
+    if not password:
+        password = getpass.getpass("New password (min 8 chars): ")
+        if getpass.getpass("Repeat new password: ") != password:
+            sys.exit("The passwords don't match. Nothing was changed.")
+    if len(password) < 8:
+        sys.exit("Password must be at least 8 characters. Nothing was changed.")
+    with session_factory() as db:
+        user = db.scalar(select(User).where(func.lower(User.email) == email.strip().lower()))
+        if user is None:
+            known = ", ".join(db.scalars(select(User.email).order_by(User.email))) or "none"
+            sys.exit(f"No user {email}. Existing users: {known}")
+        user.password_hash = hash_password(password)
+        db.commit()
+    print(f"Password updated for {user.email}. Sign in with the new password.")
+
+
 def ingest() -> None:
     from app.ingest.runner import IngestAlreadyRunning, run_ingestion
 
@@ -106,6 +129,8 @@ def main() -> None:
     cu.add_argument("email")
     cu.add_argument("--role", choices=["admin", "manager"], default="manager")
     cu.add_argument("--name")
+    sp = sub.add_parser("set-password")
+    sp.add_argument("email")
     sub.add_parser("ingest")
     sub.add_parser("scheduler")
     args = parser.parse_args()
@@ -114,6 +139,8 @@ def main() -> None:
         init_db()
     elif args.cmd == "create-user":
         create_user(args.email, args.role, args.name)
+    elif args.cmd == "set-password":
+        set_password(args.email)
     elif args.cmd == "ingest":
         ingest()
     elif args.cmd == "scheduler":
