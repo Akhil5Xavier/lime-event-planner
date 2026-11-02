@@ -1,5 +1,7 @@
 # Lime Event Planner · Stuttgart
 
+[![CI](https://github.com/Akhil5Xavier/lime-event-planner/actions/workflows/ci.yml/badge.svg)](https://github.com/Akhil5Xavier/lime-event-planner/actions/workflows/ci.yml)
+
 Internal tool for the Lime Stuttgart mobility center. It collects upcoming events in and around Stuttgart, shows them on a calendar, and recommends where and when to put extra e-scooters.
 
 - **Calendar**: month or week view. Each day is coloured by expected demand and shows `events · +extra scooters`.

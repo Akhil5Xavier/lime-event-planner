@@ -56,7 +56,7 @@ After each major part, in this order:
 Be honest about gaps. At the end of the original build:
 
 - **The real Ticketmaster API** was first called after the main build. It revealed bugs 21–24 above, all fixed and re-checked with a second real sync (0 unknown venues). Keep comparing synced events with ticketmaster.de now and then.
-- **The Docker stack and CI** have never been run: Docker wasn't installed and the repository isn't on GitHub yet.
+- **The Docker stack and CI** now run: the stack was verified at http://localhost (bugs 26-27), and the first GitHub Actions run passed backend, frontend and Docker jobs.
 - **The recommendation numbers** are starting guesses. Compare `SCOOTER_SHARE`, the fill factors and the windows with real Lime ride data around past events. This is what decides whether the tool is useful.
 - **Venue coordinates and capacities** are approximate; have the ops team check them.
 

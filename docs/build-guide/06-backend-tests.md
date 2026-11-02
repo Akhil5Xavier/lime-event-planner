@@ -250,7 +250,7 @@ On every push and pull request, GitHub Actions runs three jobs:
 2. **frontend:** `npm ci`, then `npm run build` (including the typecheck).
 3. **docker** (only if both pass): builds the images, starts the whole stack with `--wait`, and smoke-tests `https://localhost/api/health` and the page through Caddy.
 
-> CI starts working as soon as the repository is pushed to GitHub. It hasn't run yet because the project isn't on GitHub.
+> The repository is on GitHub (`Akhil5Xavier/lime-event-planner`). The **first run passed all three jobs** on the first try, which also confirmed the backend on Linux with Python 3.12 and real PostgreSQL. The README shows a live CI badge.
 
 ## 6.13 Known gaps
 

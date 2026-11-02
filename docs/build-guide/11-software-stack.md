@@ -125,7 +125,7 @@ Every piece of software the project uses: the exact version, what it does here, 
 | **Let's Encrypt** | Free | HTTPS certificates (through Caddy) | Only with a real domain. |
 | Slack (incoming webhook) | Free | Sync failure alerts (`ALERT_WEBHOOK_URL`) | Optional. |
 | Sentry | Free tier available | Error reporting | Optional. |
-| **GitHub + GitHub Actions** | Free for public repositories, minutes included for private ones | Code hosting and CI (`.github/workflows/ci.yml`) | CI runs once the repo is pushed. |
+| **GitHub + GitHub Actions** | Free for public repositories, minutes included for private ones | Code hosting (`Akhil5Xavier/lime-event-planner`, public) and CI (`.github/workflows/ci.yml`) | CI runs once the repo is pushed. |
 
 ## 11.7 Testing and quality tools
 
