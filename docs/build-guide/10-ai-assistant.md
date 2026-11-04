@@ -17,7 +17,7 @@ The model never touches the database. It can only ask for the four read-only fun
 
 | Option | Why or why not |
 |---|---|
-| **Groq free tier** (chosen) | Free key, no credit card, very fast, good tool calling on open models such as Llama 3.3 70B. Limited requests and tokens per minute and per day. |
+| **Groq free tier** (chosen) | Free key, no credit card, very fast, good tool calling on open models. **The model in use is `openai/gpt-oss-120b`.** The first choice, Llama 3.3 70B, was retired by Groq before the first live test (see 10.14). Limited requests and tokens per minute and per day. |
 | Google Gemini free tier | Strong, and the quota is generous, but free-tier prompts may be used to improve Google's products. |
 | Hugging Face | Works the same way, but the free monthly credits are small. |
 | Ollama (local) | Completely free and private, but it needs RAM. On an 8 GB laptop without a graphics card only a ~3B model fits, which is slow and unreliable at tool calling. |
