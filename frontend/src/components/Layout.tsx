@@ -1,7 +1,6 @@
 import { Suspense } from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 
-import LimyWidget from "../assistant/LimyWidget";
 import { useAuth } from "../auth/AuthContext";
 
 const linkClass = ({ isActive }: { isActive: boolean }) =>
@@ -9,8 +8,6 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function Layout() {
   const { user, logout } = useAuth();
-  // The Assistant page is already a full-size Limy chat; no floating button there.
-  const onAssistantPage = useLocation().pathname.startsWith("/assistant");
   return (
     <div className="min-h-screen">
       <header className="border-b border-gray-200 bg-white">
@@ -29,9 +26,6 @@ export default function Layout() {
             </NavLink>
             <NavLink to="/venues" className={linkClass}>
               Venues
-            </NavLink>
-            <NavLink to="/assistant" className={linkClass}>
-              Assistant
             </NavLink>
             {user?.role === "admin" && (
               <NavLink to="/admin" className={linkClass}>
@@ -52,7 +46,6 @@ export default function Layout() {
           <Outlet />
         </Suspense>
       </main>
-      {!onAssistantPage && <LimyWidget />}
     </div>
   );
 }

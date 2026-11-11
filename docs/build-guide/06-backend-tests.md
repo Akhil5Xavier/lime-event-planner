@@ -3,9 +3,9 @@
 Tests prove each part works and **keep proving it** after every later change. In this project they caught real bugs before anyone saw them: a wrong overlap algorithm, a stale "running" status after a refactor, a wrong number format check, and more (chapter 9).
 
 This chapter covers all of it:
-1. **Automated backend tests:** 85 tests in 7 files, run with pytest in about 10 seconds.
+1. **Automated backend tests:** 51 tests in 6 files, run with pytest in about 10 seconds.
 2. **Frontend checks:** the TypeScript typecheck and production build.
-3. **Manual and live checks:** what can't be automated (real Ticketmaster, the real AI model, the browser, Docker) and how it was checked.
+3. **Manual and live checks:** what can't be automated (real Ticketmaster, the browser, Docker) and how it was checked.
 4. **CI:** what runs automatically on every push.
 
 ---
@@ -16,11 +16,11 @@ This chapter covers all of it:
 cd D:\Projects\Lime\backend
 .venv\Scripts\python.exe -m pytest -q
 ```
-Expected: `85 passed`. Useful variants:
+Expected: `51 passed`. Useful variants:
 
 | Command | What for |
 |---|---|
-| `pytest -q tests/test_assistant.py` | One file |
+| `pytest -q tests/test_api.py` | One file |
 | `pytest -q -k venue` | Only tests whose name contains "venue" |
 | `pytest -q -x` | Stop at the first failure |
 | `pytest -q --durations=5` | Show the 5 slowest tests (this found the bcrypt slowdown, chapter 9 bug 25) |
@@ -31,10 +31,10 @@ Expected: `85 passed`. Useful variants:
 |---|---|---|
 | **pytest** | 9.1 | Test runner: finds `test_*.py` files and `test_*` functions, runs them, reports failures with a diff. |
 | **FastAPI `TestClient`** | (with FastAPI) | Calls the real API in-process without starting a server: the real routing, validation, auth and JSON. |
-| **`httpx.MockTransport`** | (with httpx) | A fake HTTP server for code that calls Ticketmaster or the AI provider. Returns prepared responses and records the requests. |
+| **`httpx.MockTransport`** | (with httpx) | A fake HTTP server for code that calls Ticketmaster. Returns prepared responses and records the requests. |
 | **SQLite in memory** | (with Python) | A fresh, empty database for every test, in milliseconds. |
 | **`monkeypatch`** | (pytest built-in) | Temporarily replaces a function or setting for one test, then restores it. |
-| **`pytest.mark.parametrize`** | (pytest built-in) | Runs one test with many inputs (for example 8 kinds of bad tool input). |
+| **`pytest.mark.parametrize`** | (pytest built-in) | Runs one test with many inputs (for example the bad inputs to `set-password`). |
 
 ### What is tested, by file
 
@@ -45,9 +45,8 @@ Expected: `85 passed`. Useful variants:
 | `test_deployment.py` | 5 | Scooter recommendation and hotspots (pure logic) |
 | `test_api.py` | 12 | REST API: auth, roles, day view, timezones, calendar, event CRUD |
 | `test_production.py` | 13 | Production safety, health checks, alerts, locks, retention, audit, first admin, catch-up sync |
-| `test_assistant.py` | 34 | AI assistant: tools, prompt, tool loop with a fake provider, errors, `/api/chat` |
 | `test_cli.py` | 5 | The `set-password` command |
-| **Total** | **85** | |
+| **Total** | **51** | |
 
 ---
 
@@ -66,10 +65,8 @@ os.environ["ENVIRONMENT"] = "development"
 os.environ["ALERT_WEBHOOK_URL"] = ""
 os.environ["SENTRY_DSN"] = ""
 os.environ["LOG_FORMAT"] = "text"
-os.environ["LLM_API_KEY"] = ""
-os.environ["LLM_BASE_URL"] = "https://api.groq.com/openai/v1"
 ```
-These lines come **before** `from app.main import app`, because settings are read at import time. Environment variables beat `backend/.env`, so your real Ticketmaster key, Groq key or Slack webhook can **never** be used by a test. Without them, running the tests would call real APIs, use up the free AI quota and post real alerts.
+These lines come **before** `from app.main import app`, because settings are read at import time. Environment variables beat `backend/.env`, so your real Ticketmaster key or Slack webhook can **never** be used by a test. Without them, running the tests would call real APIs, use up your API quota and post real alerts.
 
 ### 2. A password hash computed once
 ```python
@@ -175,35 +172,7 @@ Pure logic with in-memory objects, so there's no database and the tests are very
 | `test_bootstrap_admin_needs_both_settings_and_a_real_password` | Missing email, missing password or a password under 8 characters → no admin. |
 | `test_worker_catches_up_when_data_is_stale` | The worker syncs on start only when a source is configured and no success is recent. |
 
-## 6.8 `test_assistant.py`: the AI assistant (34 tests, no real AI calls)
-
-| Group | Tests | Proves |
-|---|---|---|
-| Tool definitions | `test_tool_specs_match_implementations` | Every tool sent to the model exists, and every existing tool is sent. |
-| `search_events` | `..._range_is_inclusive_and_sorted`, `..._filters` | Inclusive end date, sort order, the exact row for the VfB match, filters for venue (including aliases), title text, category and minimum visitors, `limit` with `total` and `shown`, and `last_day` for multi-day events. |
-| `get_day_plan` | `test_day_plan_matches_day_view` | **The same numbers as the `/api/events/day` endpoint**, so chat and UI can't disagree. |
-| `get_busiest_days`, `list_venues` | `test_busiest_days`, `test_list_venues_matches_aliases` | Ranking by extra scooters; alias search ("schleyer" → Hanns-Martin-Schleyer-Halle). |
-| Bad input | `test_tool_errors_are_returned_as_text` ×8 | An unknown tool, bad JSON, "next friday" as a date, a reversed range, over 100 days, category "sports", a missing date, `top="many"`: each returns `Error: …` instead of crashing. |
-| Prompt | `test_prompt_spells_out_relative_dates` | For a fixed Monday: the "next week", "this weekend" and "this month" ranges. |
-| Tool loop | `test_agent_runs_tools_and_returns_answer` | The fake provider first asks for a tool, then answers. Checks the URL, `Bearer` key, model, system prompt with today's date, tools, the tool result sent back **with the matching `tool_call_id`**, the reply and `tools_used`. |
-| | `test_agent_stops_after_max_tool_rounds` | A model that never stops calling tools is cut off. |
-| | `test_reply_cleanup_repairs_lenticular_brackets` | `【Sat 24 Oct](…)` → `[Sat 24 Oct](…)`, a quirk seen live from gpt-oss. |
-| Provider errors | `test_provider_errors_become_friendly_messages` ×4, `test_connection_error_is_friendly` | 401, 404, 429 (retried twice), 400 and network errors become friendly messages that **never contain the key**. |
-| Endpoint | `test_chat_requires_login`, `test_chat_disabled_without_key`, `test_ollama_needs_no_key`, `test_chat_validates_history` ×6, `test_chat_returns_answer`, `test_chat_maps_provider_errors_to_502` | 401 without login; 503 when not configured (and the status endpoint says so); Ollama needs no key, Hugging Face does; 6 invalid histories → 422 (empty, starting with the assistant, two user turns in a row, ending with the assistant, over 4,000 characters, an injected `system` role); the happy path passes the history through; 502 with the friendly message on provider errors. |
-
-The fake provider looks like this:
-```python
-def handler(request):
-    requests.append(json.loads(request.content))
-    if len(requests) == 1:   # first call: the model wants a tool
-        return httpx.Response(200, json=_completion(_tool_call("call_1", "search_events", {...})))
-    return httpx.Response(200, json=_completion({"role": "assistant", "content": "Three events next week."}))
-
-answer(db, settings, history, client=httpx.Client(transport=httpx.MockTransport(handler)), now=NOW)
-```
-`now=NOW` fixes "today" (Monday 2 Nov 2026), so date-dependent results are the same on every run.
-
-## 6.9 `test_cli.py`: `set-password` (5 tests)
+## 6.8 `test_cli.py`: `set-password` (5 tests)
 
 | Test | Proves |
 |---|---|
@@ -216,9 +185,9 @@ The `prompts` fixture replaces `getpass.getpass` with a function that returns pr
 
 ---
 
-## 6.10 Frontend checks
+## 6.9 Frontend checks
 
-There are no automated frontend unit tests yet; that's a known gap (see 6.13). Instead:
+There are no automated frontend unit tests yet; that's a known gap (see 6.12). Instead:
 
 | Check | Command | Catches |
 |---|---|---|
@@ -227,23 +196,21 @@ There are no automated frontend unit tests yet; that's a known gap (see 6.13). I
 
 Run them from `D:\Projects\Lime\frontend`.
 
-## 6.11 Manual and live checks
+## 6.10 Manual and live checks
 
 Some things can only be checked for real. These were done during the build, and are worth repeating after big changes:
 
 | What | How | Found |
 |---|---|---|
-| **Browser walk-through** | Log in; calendar → day view → map; card ↔ marker selection; forms; admin; **the browser console** | Map not fitted to hotspots; today's highlight looked like a demand colour; the Limy window covering its button |
+| **Browser walk-through** | Log in; calendar → day view → map; card ↔ marker selection; forms; admin; **the browser console** | Map not fitted to hotspots; today's highlight looked like a demand colour |
 | **Real Ticketmaster sync** | `python -m app.cli ingest`, then inspect the stored venues | "Unknown venue" (no `locale`), the club matched to the Marktplatz, the Ludwigsburg arena |
-| **Real AI model** | Ask fixed questions and compare with the tool output ("ground truth") | A retired model, the wrong language, multi-day ranges, a 10× number error, broken link brackets |
-| **Fake AI server** | A 20-line OpenAI-compatible server on localhost, to test the whole UI without a key | `localhost` costing 2 s per call on Windows |
 | **Docker stack** | `docker compose up -d --build --wait`, `docker compose ps`, service logs, a scripted end-to-end check through `http://localhost` | The CSP blocking FullCalendar's icon font; the first backup being of an empty database |
 | **Migrations on real data** | `upgrade` → `downgrade` → `upgrade` on a copy of the database | (all passed) |
 | **Negative checks** | Production start with a weak secret; 12 wrong logins | It refused to start; 429 after 5 attempts |
 
-The scripted Docker end-to-end check (in the scratchpad during the build) called, through `http://localhost`: the page and its security headers, a deep link, health, login, the calendar summary, the sync history, the chat status, one real chat question, and 12 wrong logins.
+The scripted Docker end-to-end check (in the scratchpad during the build) called, through `http://localhost`: the page and its security headers, a deep link, health, login, the calendar summary, the sync history, and 12 wrong logins.
 
-## 6.12 Continuous integration (`.github/workflows/ci.yml`)
+## 6.11 Continuous integration (`.github/workflows/ci.yml`)
 
 On every push and pull request, GitHub Actions runs three jobs:
 1. **backend:** `pip install -r requirements.lock pytest`, then `pytest -q`, then `init-db` on an empty database (migrations apply from scratch).
@@ -252,16 +219,15 @@ On every push and pull request, GitHub Actions runs three jobs:
 
 > The repository is on GitHub (`Akhil5Xavier/lime-event-planner`). The **first run passed all three jobs** on the first try, which also confirmed the backend on Linux with Python 3.12 and real PostgreSQL. The README shows a live CI badge.
 
-## 6.13 Known gaps
+## 6.12 Known gaps
 
-- **No frontend unit tests.** The best next step is **Vitest** (Vite's test runner) for `lib/format.ts`, the Stuttgart-time conversions, where bugs are silent and costly. After that, **React Testing Library** for `useChat` and `LimyWidget`'s `panelStyle()`.
-- **No browser end-to-end tests.** **Playwright** could automate the walk-through in 6.11 (log in, open a day, use Limy).
-- **AI answer quality** can't be unit-tested. A small "eval" (a fixed set of questions with expected facts, run against the real model) would catch prompt regressions.
+- **No frontend unit tests.** The best next step is **Vitest** (Vite's test runner) for `lib/format.ts`, the Stuttgart-time conversions, where bugs are silent and costly. After that, **React Testing Library** for the main components.
+- **No browser end-to-end tests.** **Playwright** could automate the walk-through in 6.10 (log in, open a day, check the map).
 - **Postgres-specific behaviour** is only covered by the Docker run and CI; the unit tests use SQLite.
 
 ## Checkpoint
 
-1. `pytest -q` shows `85 passed`.
+1. `pytest -q` shows `51 passed`.
 2. **Break something on purpose:** change `ARRIVAL_LEAD` in `deployment.py` to 60 minutes and run again. `test_recommendation_scooters_priority_and_windows` should fail. Change it back. A test suite you've never seen fail is a suite you can't trust.
 3. `npm run build` finishes without errors.
 

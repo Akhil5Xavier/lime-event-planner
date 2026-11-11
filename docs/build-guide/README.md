@@ -20,12 +20,11 @@ The finished code is in this repository. Use it as your answer key: write each f
 | 3 | [Data collection](03-data-collection.md) | Ticketmaster and PredictHQ connectors, venue matching, duplicate detection, sync runner, alerts |
 | 4 | [Recommendation logic](04-recommendation-logic.md) | "Which events run on this day", the scooter formula, hotspots, cleanup |
 | 5 | [API, CLI and migrations](05-api-cli-migrations.md) | Request/response schemas, every endpoint, the app entry point, scheduler, CLI, Alembic |
-| 6 | [Testing](06-backend-tests.md) | All 85 backend tests and why each exists, frontend checks, live checks, CI, known gaps |
+| 6 | [Testing](06-backend-tests.md) | All 51 backend tests and why each exists, frontend checks, live checks, CI, known gaps |
 | 7 | [Frontend](07-frontend.md) | The React app: API client, login, calendar, day view, map, forms, admin |
 | 8 | [Deployment and CI](08-deployment-and-ci.md) | Dockerfiles, nginx, Caddy, Compose, backups, GitHub Actions |
 | 9 | [Verification and lessons](09-verification-and-lessons.md) | How everything was tested end to end, and every bug found along the way |
-| 10 | [AI assistant](10-ai-assistant.md) | Limy: a free-model chatbot with read-only tools, and its floating, draggable chat button |
-| 11 | [Software stack](11-software-stack.md) | Every tool, library, image and service with its exact version and why it's used |
+| 10 | [Software stack](10-software-stack.md) | Every tool, library, image and service with its exact version and why it's used |
 
 ## The project in one picture
 
@@ -63,10 +62,9 @@ Lime/
 │   │   ├── seed/venues.py
 │   │   ├── ingest/ (base, ticketmaster, predicthq, store, runner)
 │   │   ├── services/ (events, planning, deployment, cleanup)
-│   │   ├── assistant/ (tools, prompt, llm, agent)
-│   │   └── api/ (auth, users, venues, events, ingest, health, chat)
+│   │   └── api/ (auth, users, venues, events, ingest, health)
 │   └── tests/ (conftest, test_ingest, test_venue_matching, test_deployment, test_api,
-│               test_production, test_assistant, test_cli, fixtures/)
+│               test_production, test_cli, fixtures/)
 └── frontend/
     ├── package.json, tsconfig.json, vite.config.ts, tailwind/postcss config, index.html
     ├── Dockerfile, nginx.conf, proxy_params_lime
@@ -75,7 +73,6 @@ Lime/
         ├── api/ (client.ts, hooks.ts, types.ts)
         ├── auth/AuthContext.tsx
         ├── lib/ (format.ts, useCategoryParam.ts)
-        ├── assistant/ (useChat, ChatThread, ChatComposer, NotConfigured, LimyIcon, LimyWidget, LimyPanel)
         ├── components/ (Layout, CategoryFilter, EventCard, DayMap, EventForm)
-        └── pages/ (LoginPage, CalendarPage, DayPage, VenuesPage, AdminPage, AssistantPage)
+        └── pages/ (LoginPage, CalendarPage, DayPage, VenuesPage, AdminPage)
 ```

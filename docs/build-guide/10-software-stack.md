@@ -1,13 +1,13 @@
-# Chapter 11: The complete software stack
+# Chapter 10: The complete software stack
 
 Every piece of software the project uses: the exact version, what it does here, and why it was chosen. Versions are as installed and pinned in October 2026 (`backend/requirements.lock`, `frontend/package-lock.json`, and the image tags in the Dockerfiles and `docker-compose.yml`).
 
-## 11.1 The whole system at a glance
+## 10.1 The whole system at a glance
 
 ```
                          ┌──────────────────────── Browser (Chrome / Edge / Firefox) ───────────────────────┐
                          │ React 18.3 SPA · TypeScript 5.9 · Tailwind 3.4 · FullCalendar 6.1 · Leaflet 1.9 │
-                         │ TanStack Query 5 · React Router 6 · react-markdown 9 · Limy chat widget         │
+                         │ TanStack Query 5 · React Router 6                                               │
                          └───────────────────────────────────────┬──────────────────────────────────────────┘
                                                                  │ http://localhost  (https://<domain> in production)
 ┌──────────────────────────────── Docker Compose v5.6 on Docker Engine 29.9 (Docker Desktop 4.96 + WSL 2) ──────────────┐
@@ -19,10 +19,10 @@ Every piece of software the project uses: the exact version, what it does here, 
 │  backup: pg_dump (postgres 16.15 image) ────────────────────────────────────────────────────► db: PostgreSQL 16.15   │
 └────────────────────────────────────────────────────────────────────────────────────────────────┬──────────────────────┘
                                                                                                  │ HTTPS (httpx 0.28)
-                       Ticketmaster Discovery API v2 · PredictHQ (optional) · Groq (openai/gpt-oss-120b) · Slack webhook · Sentry
+                       Ticketmaster Discovery API v2 · PredictHQ (optional) · Slack webhook · Sentry
 ```
 
-## 11.2 Development machine
+## 10.2 Development machine
 
 | Software | Version | Role in this project | Why |
 |---|---|---|---|
@@ -37,7 +37,7 @@ Every piece of software the project uses: the exact version, what it does here, 
 | winget | (built in) | Installed Node, Git and Docker Desktop | Windows' package manager. |
 | VS Code | any | Editor (recommended) | |
 
-## 11.3 Backend (Python)
+## 10.3 Backend (Python)
 
 ### Direct dependencies (`backend/requirements.txt` → pinned in `requirements.lock`)
 
@@ -51,7 +51,7 @@ Every piece of software the project uses: the exact version, what it does here, 
 | **SQLAlchemy** | 2.1.6 | ORM: models, queries, sessions | The standard Python ORM; works on both SQLite and PostgreSQL. Installed locally as the **pure-Python wheel** because Windows Smart App Control blocked its compiled parts (chapter 9). |
 | **Alembic** | 1.20.1 | Database migrations 0001–0003 | SQLAlchemy's migration tool. Uses **Mako** 1.4.3 for its file template. |
 | **psycopg** (+ psycopg-binary) | 3.3.6 | PostgreSQL driver | Modern, maintained driver; the binary package needs no compiler. |
-| **httpx** | 0.28.1 | Calls Ticketmaster, PredictHQ, the AI provider and the alert webhook; `MockTransport` in tests | Timeouts, a sync API and built-in test transports. No separate AI SDK is needed. |
+| **httpx** | 0.28.1 | Calls Ticketmaster, PredictHQ and the alert webhook; `MockTransport` in tests | Timeouts, a sync API and built-in test transports. |
 | **APScheduler** | 3.11.3 (pinned `<4`) | The nightly sync (cron 03:00) and the start-up catch-up sync | Runs inside the app, no external cron. v4 is a rewrite, hence the pin. |
 | **PyJWT** | 2.15.1 | Login tokens (HS256) | Small and focused. |
 | **bcrypt** | 5.0.0 | Password hashing | Slow on purpose, salted, industry standard. Used directly, because `passlib` is unmaintained. |
@@ -74,7 +74,7 @@ Every piece of software the project uses: the exact version, what it does here, 
 ### Python standard library modules that matter
 `zoneinfo` (timezones), `datetime`, `difflib.SequenceMatcher` (duplicate title similarity), `dataclasses`, `argparse` (the CLI), `getpass` (hidden password prompts), `secrets` (random secrets), `threading` (the in-process sync lock), `logging` + `json` (JSON logs), `math` (haversine distance, `ceil`).
 
-## 11.4 Frontend (TypeScript / React)
+## 10.4 Frontend (TypeScript / React)
 
 ### Runtime packages (shipped to the browser)
 | Package | Version | Role in this project | Why |
@@ -84,7 +84,6 @@ Every piece of software the project uses: the exact version, what it does here, 
 | **TanStack Query** (@tanstack/react-query) | 5.104.5 | Fetching and caching API data; refresh after changes; polling the sync status | Removes hand-written loading and caching code. |
 | **FullCalendar** (core, react, daygrid, interaction) | 6.1.22 | The month/week calendar | Mature calendar; it ships its icons as an embedded font (CSP needs `font-src data:`). |
 | **Leaflet** + react-leaflet | 1.9.4 + 4.2.1 | Day-view map, location picker | Free, open source. |
-| **react-markdown** | 9.1.0 | Rendering Limy's answers | Safe: never renders raw HTML. |
 | **@sentry/react** | 10.76.2 | Optional browser error reporting | Removed from the build when `VITE_SENTRY_DSN` is empty. |
 
 ### Build-time packages (not shipped)
@@ -98,9 +97,9 @@ Every piece of software the project uses: the exact version, what it does here, 
 | @types/react, @types/react-dom, @types/leaflet | 18.3.31, 18.3.7, 1.9.22 | Type definitions |
 
 ### Browser APIs used
-`fetch`, `localStorage` (login token, Limy's position), `sessionStorage` (the chat thread), `Intl.DateTimeFormat` (Stuttgart time), `ResizeObserver` (map refit), Pointer Events (dragging Limy), `history` (routing).
+`fetch`, `localStorage` (login token), `Intl.DateTimeFormat` (Stuttgart time), `ResizeObserver` (map refit), `history` (routing).
 
-## 11.5 Containers and infrastructure
+## 10.5 Containers and infrastructure
 
 | Component | Image / version | Role | Why |
 |---|---|---|---|
@@ -108,38 +107,37 @@ Every piece of software the project uses: the exact version, what it does here, 
 | **Docker Compose** | v5.6.1 | Defines and starts all six services (`docker-compose.yml`) | One command. |
 | backend / worker image | `python:3.12.15-slim` | API (2 Uvicorn workers, non-root user) and the scheduler worker | Small Debian image with prebuilt wheels. |
 | frontend build stage | `node:24.20.0-alpine` | `npm ci && npm run build` | Not in the final image (multi-stage build). |
-| frontend image | `nginx:1.30.6-alpine` | Serves the app; CSP and security headers; login (5/min) and chat (10/min) rate limits; `/api` proxy | Fast, stable line (even minor version = stable). |
+| frontend image | `nginx:1.30.6-alpine` | Serves the app; CSP and security headers; login rate limit (5/min); `/api` proxy | Fast, stable line (even minor version = stable). |
 | **Caddy** | `caddy:2.11.7-alpine` | The only exposed service: HTTP locally, **automatic Let's Encrypt HTTPS** on a real domain, HSTS | No certificate scripts needed. |
 | **PostgreSQL** | `postgres:16.15-alpine` | The production database (`pgdata` volume) | Reliable and free. |
 | backup | `postgres:16.15-alpine` + `ops/backup.sh` | Daily `pg_dump`, keeps 14 days, waits for migrations | Has `pg_dump` built in. |
 | SQLite | (Python built-in) | Local development and all tests | A single file, zero setup. |
 
-## 11.6 External services
+## 10.6 External services
 
 | Service | Plan / cost | Used for | Notes |
 |---|---|---|---|
 | **Ticketmaster Discovery API v2** | Free key (5,000 calls/day) | Main event source | `locale=*` is required for German venue names. |
 | **PredictHQ** | Paid, optional | Predicted attendance | Turns on when `PREDICTHQ_TOKEN` is set. |
-| **Groq** | Free tier (rate-limited) | Limy's language model, `openai/gpt-oss-120b`, through the OpenAI-compatible Chat Completions API | Switchable to Google Gemini, Hugging Face or a local Ollama by changing three settings. Groq retires models over time (Llama 3.3 already gone). |
 | **OpenStreetMap tiles** | Free | Map background | Respect the tile usage policy; heavy use needs a tile provider. |
 | **Let's Encrypt** | Free | HTTPS certificates (through Caddy) | Only with a real domain. |
 | Slack (incoming webhook) | Free | Sync failure alerts (`ALERT_WEBHOOK_URL`) | Optional. |
 | Sentry | Free tier available | Error reporting | Optional. |
 | **GitHub + GitHub Actions** | Free for public repositories, minutes included for private ones | Code hosting (`Akhil5Xavier/lime-event-planner`, public) and CI (`.github/workflows/ci.yml`) | CI runs once the repo is pushed. |
 
-## 11.7 Testing and quality tools
+## 10.7 Testing and quality tools
 
 | Tool | Version | Role |
 |---|---|---|
-| **pytest** | 9.1.1 | Backend test runner: 85 tests (chapter 6) |
+| **pytest** | 9.1.1 | Backend test runner: 51 tests (chapter 6) |
 | FastAPI `TestClient` | (FastAPI 0.162) | In-process API tests |
-| `httpx.MockTransport` | (httpx 0.28) | Fake Ticketmaster and fake AI provider |
+| `httpx.MockTransport` | (httpx 0.28) | Fake Ticketmaster API |
 | SQLite in memory + `StaticPool` | (SQLAlchemy 2.1) | A fresh database per test |
 | TypeScript compiler | 5.9.3 | Frontend type check, part of every build |
 | GitHub Actions | `actions/checkout@v4`, `setup-python@v5`, `setup-node@v4` | CI: tests, build, Docker smoke test |
 | The built-in browser of the Claude desktop app | | Manual browser checks during the build |
 
-## 11.8 Security building blocks
+## 10.8 Security building blocks
 
 | Concern | How it's handled | Where |
 |---|---|---|
@@ -148,14 +146,12 @@ Every piece of software the project uses: the exact version, what it does here, 
 | Secrets | `.env` files (git-ignored); production refuses a weak `JWT_SECRET` or SQLite; API keys scrubbed from errors | `config.py`, `ingest/runner.py` |
 | Roles | admin / manager, at router level | `api/*.py` |
 | Password guessing | nginx: 5 logins per minute per IP (429) | `frontend/nginx.conf` |
-| AI cost and abuse | nginx: 10 chat questions per minute; at most 6 tool rounds; history limits | `nginx.conf`, `assistant/agent.py`, `schemas.py` |
-| Injected scripts (XSS) | CSP `script-src 'self'`; React escapes text; react-markdown has no raw HTML | `nginx.conf`, frontend |
+| Injected scripts (XSS) | CSP `script-src 'self'`; React escapes text | `nginx.conf`, frontend |
 | Clickjacking etc. | `X-Frame-Options DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, HSTS | `nginx.conf`, `Caddyfile` |
-| Prompt injection | Event text is treated as data; the AI's tools are read-only | `assistant/prompt.py`, `assistant/tools.py` |
 | Containers | API runs as a non-root user; only Caddy has published ports | `backend/Dockerfile`, `docker-compose.yml` |
 | Data loss | Daily `pg_dump` with 14-day retention; documented restore | `ops/backup.sh`, README |
 
-## 11.9 Where each part of the stack is configured
+## 10.9 Where each part of the stack is configured
 
 | File | Configures |
 |---|---|
@@ -170,13 +166,12 @@ Every piece of software the project uses: the exact version, what it does here, 
 | `.github/workflows/ci.yml` | Continuous integration |
 | `frontend/vite.config.ts`, `tsconfig.json`, `tailwind.config.js` | Frontend tooling |
 
-## 11.10 Keeping the stack up to date
+## 10.10 Keeping the stack up to date
 
 - **Monthly:**
   - Backend: regenerate `requirements.lock` (instructions at the top of the file) and run `pytest`.
   - Frontend: run `npm outdated`, update within the major version, and run `npm run build`.
 - **Base images:** look up current tags on Docker Hub (Python security releases, nginx stable, PostgreSQL 16 minor versions, Caddy) and update the exact tags; never use `latest`.
-- **Free AI models:** if Limy reports "Model … was not found", list the available models (README) and change `LLM_MODEL`.
 - **Major upgrades** (React 19, PostgreSQL 17, APScheduler 4, Vite 6+) are their own projects: read the changelog, update on a branch, and run the full checks in chapter 6.
 
 Back to the [guide overview](README.md).

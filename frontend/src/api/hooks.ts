@@ -4,9 +4,6 @@ import { api, query } from "./client";
 import type {
   CalendarDay,
   Category,
-  ChatMessage,
-  ChatReply,
-  ChatStatus,
   DayData,
   EventInput,
   EventItem,
@@ -115,16 +112,6 @@ export function useRunIngest() {
     mutationFn: () => api<{ status: string }>("/api/ingest/run", { method: "POST" }),
     // The run starts in the background; give it a moment to create its row.
     onSuccess: () => setTimeout(invalidate, 800),
-  });
-}
-
-export function useChatStatus() {
-  return useQuery({ queryKey: ["chat", "status"], queryFn: () => api<ChatStatus>("/api/chat/status") });
-}
-
-export function useSendChat() {
-  return useMutation({
-    mutationFn: (messages: ChatMessage[]) => api<ChatReply>("/api/chat", { method: "POST", body: { messages } }),
   });
 }
 

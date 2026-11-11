@@ -123,22 +123,6 @@ export interface SourceStatus {
   enabled: boolean;
 }
 
-export interface ChatMessage {
-  role: "user" | "assistant";
-  content: string;
-}
-
-export interface ChatReply {
-  reply: string;
-  tools_used: string[];
-}
-
-export interface ChatStatus {
-  enabled: boolean;
-  provider: string;
-  model: string;
-}
-
 export interface VenueInput {
   name: string;
   address?: string | null;

@@ -10,7 +10,6 @@ const CalendarPage = lazy(() => import("./pages/CalendarPage"));
 const DayPage = lazy(() => import("./pages/DayPage"));
 const VenuesPage = lazy(() => import("./pages/VenuesPage"));
 const AdminPage = lazy(() => import("./pages/AdminPage"));
-const AssistantPage = lazy(() => import("./pages/AssistantPage"));
 
 export default function App() {
   return (
@@ -26,7 +25,6 @@ export default function App() {
         <Route index element={<CalendarPage />} />
         <Route path="day/:date" element={<DayPage />} />
         <Route path="venues" element={<VenuesPage />} />
-        <Route path="assistant" element={<AssistantPage />} />
         <Route
           path="admin"
           element={

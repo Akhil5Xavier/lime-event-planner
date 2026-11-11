@@ -1,6 +1,6 @@
-"""Day- and range-level planning shared by the REST API and the AI assistant's tools.
+"""Day- and range-level planning used by the REST API.
 
-Raises ValueError for bad input; callers turn that into an HTTP 422 or a tool error.
+Raises ValueError for bad input; the API turns that into an HTTP 422.
 """
 
 from collections import defaultdict

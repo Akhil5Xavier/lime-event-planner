@@ -104,7 +104,7 @@ Migrations run automatically when the backend starts. To change Python dependenc
    - `DOMAIN=http://localhost`;
    - a long random `JWT_SECRET` and a `POSTGRES_PASSWORD`;
    - `ADMIN_EMAIL` and `ADMIN_PASSWORD` for your first login;
-   - your `TICKETMASTER_API_KEY` and `LLM_API_KEY`.
+   - your `TICKETMASTER_API_KEY`.
 
 **Start**, from the project root (`D:\Projects\Lime`):
 ```bash
@@ -193,40 +193,6 @@ API venues are matched to the 12 seeded Stuttgart venues:
 - by distance (within 150 m), only for venues that arrive without a name.
 
 Unknown venues are created automatically. Ticketmaster requests send `locale=*`; without it, German-only venues arrive without a name. The seed coordinates come from Ticketmaster where it lists the venue. Capacities are approximate; correct them on the **Venues** page.
-
-## AI assistant (free)
-
-**Limy**, the assistant, is available on every page through a round green button (bottom right). Click it to open a small chat; while the chat is closed you can drag the button anywhere, and the position is remembered. The **Assistant** page is the full-size version, and conversations carry over between the two. Limy answers questions in plain language, for example "Which events are coming up next week?", "What's the busiest day this month?" or "Where should we put extra scooters on Saturday?".
-
-**How it works:** a language model gets four **read-only** tools (`search_events`, `get_day_plan`, `get_busiest_days`, `list_venues`). They call the same code as the calendar and day view, so answers match what the app shows. The model can't change any data. Days in answers link to the day view.
-
-**Set-up (free):**
-1. Create a free Groq key at <https://console.groq.com/keys>. No credit card is needed.
-2. Add it to `.env` (in `backend\.env` for local development): `LLM_API_KEY=gsk_...`
-3. Restart the backend. The Assistant page is enabled automatically.
-
-**Other providers:** any OpenAI-compatible API works. Change `LLM_BASE_URL`, `LLM_MODEL` and `LLM_API_KEY`; `.env.example` has ready-to-copy blocks for each.
-
-**"Model … was not found":** free providers retire models (Groq dropped the Llama models this project first used). List what your key can use, from `backend`, and set one with tool support as `LLM_MODEL`:
-```bash
-.venv\Scripts\python.exe -c "import httpx; from app.config import Settings as S; s=S(); print([m['id'] for m in httpx.get(s.llm_base_url+'/models', headers={'Authorization':'Bearer '+s.llm_api_key}).json()['data']])"
-```
-
-| Provider | Cost | Notes |
-|---|---|---|
-| **Groq** (default, `openai/gpt-oss-120b`) | Free tier with daily and per-minute limits | Fast. `qwen/qwen3.8-27b` is an alternative. |
-| Google Gemini | Free tier | On the free tier Google may use prompts to improve its products. |
-| Hugging Face | Small free monthly credits | Choose a model that supports tool calling. |
-| Ollama | Free and fully local | Nothing leaves the machine. Needs RAM: a 7–8B model wants about 8 GB free, and small models are less reliable at tool calling. In Docker, `localhost` means the container itself, so point `LLM_BASE_URL` at the host. |
-
-**Limits and safety:**
-- At most 6 tool round trips per question.
-- Questions are limited to 4,000 characters, and conversations to 20 turns.
-- nginx allows 10 questions per minute per IP, which protects the free quota.
-- The API key never appears in logs or error messages.
-- Event titles from outside sources are treated as data, not instructions.
-
-**Privacy:** questions and the event data the tools return are sent to the chosen provider. Use Ollama if nothing may leave the company network.
 
 ## Operations notes
 

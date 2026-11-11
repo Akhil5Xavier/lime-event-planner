@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import auth, chat, events, health, ingest, users, venues
+from app.api import auth, events, health, ingest, users, venues
 from app.config import get_settings
 from app.observability import setup_logging, setup_sentry
 
@@ -39,5 +39,5 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-for module in (health, auth, users, venues, events, ingest, chat):
+for module in (health, auth, users, venues, events, ingest):
     app.include_router(module.router)
